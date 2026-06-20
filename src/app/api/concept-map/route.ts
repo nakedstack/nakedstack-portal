@@ -2,27 +2,78 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDeepSeekClient } from '@/lib/ai/client';
 import type { Language } from '@/lib/ai/prompts';
 import { getConceptMapCache, deriveCacheKey } from '@/lib/concept-map';
+import * as db from '@/lib/db';
+
+// ============================================================
+// GET /api/concept-map?topicId=X&language=Y
+// Lista tutte le versioni disponibili
+// ============================================================
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const topicId = searchParams.get('topicId')?.trim();
+    const language = (searchParams.get('language') || 'it') as Language;
+    const conceptMapId = searchParams.get('conceptMapId');
+
+    // Richiesta di una versione specifica
+    if (conceptMapId) {
+      const cm = await db.getConceptMapById(Number(conceptMapId));
+      if (!cm) {
+        return NextResponse.json({ error: 'Concept map not found' }, { status: 404 });
+      }
+      const versions = topicId ? await db.getConceptMapVersions(topicId, language) : [];
+      return NextResponse.json({
+        ...cm.payload,
+        conceptMapId: cm.id,
+        version: cm.version,
+        versions,
+      });
+    }
+
+    if (!topicId) {
+      return NextResponse.json({ error: 'topicId is required' }, { status: 400 });
+    }
+
+    const versions = await db.getConceptMapVersions(topicId, language);
+    return NextResponse.json({ versions });
+  } catch (error) {
+    console.error('Concept map GET error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// ============================================================
+// POST /api/concept-map
+// Body: { topic, topicId, language, regenerate? }
+// ============================================================
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const topic: string = body.topic?.trim();
+    const topicId: string = body.topicId?.trim();
     const language: Language = body.language || 'it';
-    const forceRefresh: boolean = body.forceRefresh === true;
+    const regenerate: boolean = body.regenerate === true;
 
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
     }
 
-    const cache = getConceptMapCache();
-    const cacheKey = deriveCacheKey(topic, language);
+    // Cache solo se abbiamo un topicId E non è richiesta rigenerazione
+    if (topicId && !regenerate) {
+      const cache = getConceptMapCache();
+      const cacheKey = deriveCacheKey(topicId, language);
 
-    // === Cache Hit (senza forceRefresh) ===
-    if (!forceRefresh) {
       const cached = await cache.get(cacheKey);
       if (cached) {
+        const versions = await db.getConceptMapVersions(topicId, language);
         return NextResponse.json({
-          ...cached,
+          ...cached.payload,
+          conceptMapId: cached.id,
+          version: versions[0]?.version ?? 1,
+          versions,
           cached: true,
         });
       }
@@ -33,25 +84,29 @@ export async function POST(request: NextRequest) {
 
     const langMap: Record<string, string> = { it: 'italiano', en: 'inglese', es: 'spagnolo', fr: 'francese' };
     const langName = langMap[language] || 'italiano';
+    const safeId = topic.replace(/\s+/g, '-').toLowerCase();
 
-    const prompt = `Genera una mappa concettuale per l'argomento "${topic}". Restituisci ESCLUSIVAMENTE un JSON valido con questa struttura:
-{
-  "nodes": [
-    { "id": "identificatore-unico", "label": "Nome concetto in ${langName}", "group": "categoria" }
-  ],
-  "edges": [
-    { "source": "id-nodo-partenza", "target": "id-nodo-arrivo", "relation": "tipo di relazione in ${langName}" }
-  ]
-}
-
-Regole:
-- Il nodo centrale deve avere id "${topic.replace(/\s+/g, '-').toLowerCase()}" e rappresentare il concetto principale
-- Crea tra 8 e 16 nodi totali, con una struttura a stella: nodo centrale → nodi di primo livello → eventuali sotto-nodi
-- Usa group per categorizzare (es: "concetto", "tecnologia", "vantaggio", "svantaggio", "correlato", "componente", "principio")
-- Ogni nodo deve essere connesso ad almeno un altro nodo
-- IMPORTANTE: per ogni arco, il campo "relation" DEVE essere un verbo o una breve frase che descrive la relazione (es: "include", "genera", "richiede", "è un tipo di", "si basa su", "produce", "implementa", "è composto da", "dipende da", "è parte di", "utilizza", "estende"). NON usare relazioni generiche come "collegato a".
-- Usa id semplici, in lowercase, senza spazi (usa trattini)
-- NON includere spiegazioni, solo JSON puro.`;
+    const promptLines = [
+      `Genera una mappa concettuale per l'argomento "${topic}". Restituisci ESCLUSIVAMENTE un JSON valido con questa struttura:`,
+      '{',
+      '  "nodes": [',
+      `    { "id": "identificatore-unico", "label": "Nome concetto in ${langName}", "group": "categoria" }`,
+      '  ],',
+      '  "edges": [',
+      `    { "source": "id-nodo-partenza", "target": "id-nodo-arrivo", "relation": "tipo di relazione in ${langName}" }`,
+      '  ]',
+      '}',
+      '',
+      'Regole:',
+      `- Il nodo centrale deve avere id "${safeId}" e rappresentare il concetto principale`,
+      '- Crea tra 8 e 16 nodi totali, con una struttura a stella',
+      '- Usa group per categorizzare (es: "concetto", "tecnologia", "vantaggio", "svantaggio", "correlato")',
+      '- Ogni nodo deve essere connesso ad almeno un altro nodo',
+      '- Il campo "relation" DEVE descrivere la relazione (es: "include", "genera", "utilizza")',
+      '- Usa id semplici, in lowercase, senza spazi (usa trattini)',
+      '- NON includere spiegazioni, solo JSON puro.',
+    ];
+    const prompt = promptLines.join('\n');
 
     const completion = await client.chat.completions.create({
       model: 'deepseek-chat',
@@ -78,11 +133,22 @@ Regole:
       edges: data.edges || [],
     };
 
-    // === Salva in cache per usi futuri ===
-    await cache.set(cacheKey, payload);
+    // === Salva in cache per usi futuri (solo se abbiamo topicId) ===
+    let conceptMapId: number | null = null;
+    let version = 1;
+    if (topicId) {
+      const result = await db.saveConceptMap(topicId, language, payload);
+      conceptMapId = result.id;
+      version = result.version;
+    }
+
+    const versions = topicId ? await db.getConceptMapVersions(topicId, language) : [];
 
     return NextResponse.json({
       ...payload,
+      conceptMapId,
+      version,
+      versions,
       cached: false,
     });
   } catch (error) {
@@ -94,41 +160,29 @@ Regole:
 
 /**
  * PUT /api/concept-map
- * Aggiorna solo le posizioni dei nodi nella cache.
- * Body: { topic, language, positions }
- *
- * Single Responsibility: solo aggiornamento posizioni.
+ * Aggiorna le posizioni dei nodi di una versione specifica.
+ * Body: { conceptMapId, positions }
  */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const topic: string = body.topic?.trim();
-    const language: Language = body.language || 'it';
+    const conceptMapId: number | undefined = body.conceptMapId;
     const positions: Record<string, { x: number; y: number }> | undefined = body.positions;
 
-    if (!topic) {
-      return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
+    if (!conceptMapId) {
+      return NextResponse.json({ error: 'conceptMapId is required' }, { status: 400 });
     }
     if (!positions || typeof positions !== 'object') {
       return NextResponse.json({ error: 'positions object is required' }, { status: 400 });
     }
 
-    const cache = getConceptMapCache();
-    const cacheKey = deriveCacheKey(topic, language);
-
-    // Recupera il payload esistente
-    const existing = await cache.get(cacheKey);
+    const existing = await db.getConceptMapById(conceptMapId);
     if (!existing) {
-      return NextResponse.json({ error: 'No cached concept map found for this topic' }, { status: 404 });
+      return NextResponse.json({ error: 'Concept map not found' }, { status: 404 });
     }
 
-    // Merge: mantieni nodi/edge originali, aggiorna solo positions
-    const updated = {
-      ...existing,
-      positions,
-    };
-
-    await cache.set(cacheKey, updated);
+    const updated = { ...existing.payload, positions };
+    await db.updateConceptMapPayload(conceptMapId, updated);
 
     return NextResponse.json({ success: true });
   } catch (error) {

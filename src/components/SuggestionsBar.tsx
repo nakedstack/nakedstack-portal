@@ -3,7 +3,7 @@
 import { useExplore } from '@/lib/explore-context';
 
 export default function SuggestionsBar() {
-  const { suggestions, suggestionsLoading, search, results } = useExplore();
+  const { suggestions, suggestionsLoading, sendChatMessage, results } = useExplore();
 
   if (!results) return null;
   if (suggestionsLoading) {
@@ -24,7 +24,7 @@ export default function SuggestionsBar() {
           <button
             key={i}
             className="suggestion-btn"
-            onClick={() => search(suggestion)}
+            onClick={() => sendChatMessage(suggestion)}
           >
             {suggestion}
           </button>

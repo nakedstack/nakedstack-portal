@@ -27,10 +27,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/topics — create or update a topic
+// POST /api/topics — create/update a topic, or update chat only
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Se il body contiene SOLO id + chatHistory (senza title/results),
+    // è un aggiornamento parziale della chat — non creare una nuova versione.
+    if (body.id && body.chatHistory && !body.title && !body.results) {
+      await db.updateTopicChat(body.id, body.chatHistory);
+      return NextResponse.json({ ok: true });
+    }
+
     const topic = await db.saveTopic(body);
     return NextResponse.json(topic);
   } catch (error) {

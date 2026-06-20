@@ -30,10 +30,8 @@ export async function POST(request: NextRequest) {
     const rawContent = completion.choices[0]?.message?.content || '';
     const parsed = parseResponse(rawContent);
 
-    return NextResponse.json({
-      query,
-      ...parsed,
-    });
+    // query NON va nei risultati: è responsabilità del client tracciarla.
+    return NextResponse.json(parsed);
   } catch (error) {
     console.error('Search API error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';

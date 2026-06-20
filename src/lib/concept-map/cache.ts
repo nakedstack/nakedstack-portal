@@ -18,13 +18,11 @@ import type { ConceptMapPayload } from '@/components/concept-map/types';
 
 /**
  * Chiave di cache deterministica per una mappa concettuale.
- * Derivata da topic + language.
+ * Derivata da topicId + language.
  */
 export interface CacheKey {
-  /** Hash SHA-256 dei parametri (topic + language) */
-  readonly hash: string;
-  /** Topic originale (per debug/log) */
-  readonly topic: string;
+  /** ID del topic salvato */
+  readonly topicId: string;
   /** Lingua usata nella generazione */
   readonly language: string;
 }
@@ -39,14 +37,15 @@ export interface CacheKey {
 export interface IConceptMapCache {
   /**
    * Recupera una mappa dalla cache.
-   * @returns Il payload o null se non trovato / scaduto.
+   * @returns Oggetto con id e payload, o null se non trovato.
    */
-  get(key: CacheKey): Promise<ConceptMapPayload | null>;
+  get(key: CacheKey): Promise<{ id: number; payload: ConceptMapPayload } | null>;
 
   /**
    * Salva una mappa nella cache.
+   * @returns L'id del record creato/aggiornato.
    */
-  set(key: CacheKey, payload: ConceptMapPayload): Promise<void>;
+  set(key: CacheKey, payload: ConceptMapPayload): Promise<number>;
 
   /**
    * Rimuove una mappa dalla cache (es. su richiesta refresh).

@@ -1,0 +1,449 @@
+// ============================================
+// Node Sidebar — Pannello dettagli nodo (destra)
+// ============================================
+@use 'variables' as *;
+
+// Overlay semi-trasparente dietro la sidebar
+.node-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 27, 78, 0.15);
+  z-index: 1090;
+  animation: nsFadeIn 0.2s ease;
+}
+
+// Pannello
+.node-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 340px;
+  max-width: calc(100% - 48px);
+  height: 100vh;
+  height: 100dvh;
+  background: #FFFFFF;
+  border-left: 1px solid $border-color;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -4px 0 24px rgba(3, 27, 78, 0.08);
+
+  &--open {
+    transform: translateX(0);
+  }
+
+  // Scrollbar sottile
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $border-color;
+    border-radius: 2px;
+  }
+}
+
+// Header
+.ns-header {
+  padding: 1.25rem 1.25rem 0.75rem;
+  border-bottom: 1px solid $border-light;
+  flex-shrink: 0;
+}
+
+.ns-header-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.ns-header-accent {
+  width: 4px;
+  min-height: 32px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: stretch;
+  margin-top: 2px;
+}
+
+.ns-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.ns-close-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: $bg-secondary;
+  border-radius: 6px;
+  color: $text-muted;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+
+  &:hover {
+    background: $do-red-light;
+    color: $do-red;
+  }
+}
+
+.ns-header-actions {
+  margin-top: 0.75rem;
+}
+
+// Corpo
+.ns-body {
+  flex: 1;
+  padding: 0.5rem 0;
+  overflow-y: auto;
+}
+
+// Sezioni
+.ns-section {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid $border-light;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.ns-section-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: $text-muted;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ns-section-body {
+  //
+}
+
+// Campi
+.ns-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+  gap: 0.75rem;
+}
+
+.ns-field-label {
+  font-size: 0.8rem;
+  color: $text-muted;
+  flex-shrink: 0;
+}
+
+.ns-field-value {
+  font-size: 0.82rem;
+  color: $text-primary;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+
+  &--group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-transform: capitalize;
+  }
+
+  &--mono {
+    font-family: $font-mono;
+    font-size: 0.72rem;
+    color: $text-secondary;
+  }
+}
+
+.ns-group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// Descrizione
+.ns-description {
+  margin: 0;
+  font-size: 0.84rem;
+  color: $text-secondary;
+  line-height: 1.55;
+
+  &--empty {
+    color: $text-muted;
+    font-style: italic;
+  }
+}
+
+// Loading descrizione AI
+.ns-description-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+  color: $text-muted;
+}
+
+// Errore descrizione AI
+.ns-description-error {
+  .ns-error-text {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    color: $do-red;
+  }
+}
+
+.ns-retry-btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid $border-color;
+  border-radius: 6px;
+  background: $bg-secondary;
+  color: $text-secondary;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all 0.15s;
+
+  &:hover {
+    background: $do-red-light;
+    color: $do-red;
+    border-color: $do-red;
+  }
+}
+
+.ns-regenerate-btn {
+  margin-top: 0.75rem;
+  width: 100%;
+  color: $do-purple;
+  border-color: rgba($do-purple, 0.25);
+
+  &:hover {
+    background: $do-purple-light;
+    color: $do-purple;
+    border-color: $do-purple;
+  }
+}
+
+// Connessioni
+.ns-connections {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ns-connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  background: $do-blue-50;
+  color: $do-blue;
+
+  &--incoming {
+    background: $do-green-light;
+    color: $do-green;
+  }
+
+  &--outgoing {
+    background: $do-purple-light;
+    color: $do-purple;
+  }
+}
+
+.ns-edge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ns-edge-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid $border-light;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.ns-edge-direction {
+  font-size: 0.7rem;
+  flex-shrink: 0;
+
+  &--incoming {
+    color: $do-green;
+  }
+
+  &--outgoing {
+    color: $do-purple;
+  }
+}
+
+.ns-edge-label {
+  color: $text-secondary;
+  flex-shrink: 0;
+}
+
+.ns-edge-node {
+  color: $text-primary;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+// Footer
+.ns-footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid $border-light;
+  flex-shrink: 0;
+}
+
+// Chat input in sidebar
+.ns-chat-input {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.ns-chat-field {
+  flex: 1;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid $border-color;
+  border-radius: 7px;
+  background: $bg-secondary;
+  color: $text-primary;
+  font-family: $font-sans;
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &::placeholder {
+    color: $text-muted;
+    font-size: 0.75rem;
+  }
+
+  &:focus {
+    border-color: $do-blue;
+    box-shadow: 0 0 0 3px rgba(0, 105, 255, 0.08);
+    background: #FFFFFF;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.ns-chat-send {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: $do-blue;
+  color: #FFFFFF;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, opacity 0.15s;
+
+  &:hover {
+    background: $do-blue-dark;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+// Chat messages in sidebar
+.ns-chat-msg {
+  margin-bottom: 0.65rem;
+
+  &:last-child { margin-bottom: 0; }
+
+  &--user {
+    .ns-chat-role { color: $do-blue; }
+  }
+
+  &--assistant {
+    .ns-chat-role { color: $do-purple; }
+  }
+}
+
+.ns-chat-role {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 0.15rem;
+}
+
+.ns-chat-text {
+  margin: 0;
+  font-size: 0.8rem;
+  color: $text-primary;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+// Formatted keywords [[term]]
+.ft-keyword {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  color: $do-blue;
+  font-family: $font-sans;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba($do-blue, 0.3);
+  text-underline-offset: 2px;
+  transition: color 0.15s, text-decoration-color 0.15s;
+
+  &:hover {
+    color: $do-blue-dark;
+    text-decoration-color: $do-blue;
+  }
+
+  &--static {
+    cursor: default;
+    text-decoration: none;
+    color: $do-purple;
+    font-weight: 600;
+  }
+}
+
+// Animazioni
+@keyframes nsFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

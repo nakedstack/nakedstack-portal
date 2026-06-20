@@ -11,18 +11,40 @@ import type { RawGraphNode, RawGraphEdge, ConceptMapPayload, ConceptNodeData, Co
 export interface UseConceptMapOptions {
   /** Testo dell'argomento corrente (es. prime 100 lettere dei risultati) */
   topic: string | null;
+  /** ID del topic salvato (per cache persistente — può essere null se non ancora salvato) */
+  topicId: string | null;
   /** Lingua per generazione */
   language?: string;
   /** Configurazione tema + layout iniettata */
   config: ConceptMapConfig;
 }
 
+export interface ConceptMapVersion {
+  id: number;
+  version: number;
+  created_at: string;
+}
+
 export interface UseConceptMapReturn {
   loading: boolean;
   error: string | null;
+  /** ID della concept map corrente */
+  conceptMapId: number | null;
+  /** Versione corrente */
+  version: number;
+  /** Lista di tutte le versioni disponibili */
+  versions: ConceptMapVersion[];
+  /** Dati grezzi ricevuti dall'API (null fino al primo fetch riuscito) */
+  rawData: ConceptMapPayload | null;
   graphNodes: Node<ConceptNodeData>[];
   graphEdges: Edge<ConceptEdgeData>[];
+  /** Fetch/cache: carica la mappa (dalla cache o generata) */
   fetchMap: () => Promise<void>;
+  /** Rigenera: crea una nuova versione della mappa */
+  regenerate: () => Promise<void>;
+  /** Carica una versione specifica per ID */
+  loadVersion: (id: number) => Promise<void>;
+  /** Resetta tutto */
   reset: () => void;
   /**
    * Persiste le posizioni correnti dei nodi nella cache.
@@ -83,52 +105,86 @@ function buildFlowElements(
   return { graphNodes, graphEdges };
 }
 
-export function useConceptMap({ topic, language = 'it', config }: UseConceptMapOptions): UseConceptMapReturn {
+export function useConceptMap({ topic, topicId, language = 'it', config }: UseConceptMapOptions): UseConceptMapReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawData, setRawData] = useState<ConceptMapPayload | null>(null);
+  const [conceptMapId, setConceptMapId] = useState<number | null>(null);
+  const [version, setVersion] = useState(1);
+  const [versions, setVersions] = useState<ConceptMapVersion[]>([]);
 
-  const fetchMap = useCallback(async () => {
+  const doFetch = useCallback(async (regenerate: boolean) => {
     if (!topic) return;
     setLoading(true);
     setError(null);
 
     try {
+      const body: Record<string, unknown> = { topic, language };
+      if (regenerate) body.regenerate = true;
+      if (topicId) body.topicId = topicId;
+
       const res = await fetch('/api/concept-map', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, language }),
+        body: JSON.stringify(body),
       });
+
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setRawData(data);
+      if (data.error) throw new Error(data.error as string);
+      setRawData(data as unknown as ConceptMapPayload);
+      if (data.conceptMapId) setConceptMapId(data.conceptMapId as number);
+      if (data.version) setVersion(data.version as number);
+      if (data.versions) setVersions(data.versions as ConceptMapVersion[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load concept map');
     } finally {
       setLoading(false);
     }
-  }, [topic, language]);
+  }, [topic, topicId, language]);
 
-  const reset = useCallback(() => {
-    setRawData(null);
+  const fetchMap = useCallback(() => doFetch(false), [doFetch]);
+  const regenerate = useCallback(() => doFetch(true), [doFetch]);
+  const loadVersion = useCallback(async (id: number) => {
+    if (!topicId) return;
+    setLoading(true);
     setError(null);
-  }, []);
+    try {
+      const res = await fetch(`/api/concept-map?conceptMapId=${id}&topicId=${topicId}&language=${language}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error as string);
+      setRawData(data as unknown as ConceptMapPayload);
+      setConceptMapId(data.conceptMapId as number);
+      setVersion(data.version as number);
+      setVersions((data.versions as ConceptMapVersion[]) || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load version');
+    } finally {
+      setLoading(false);
+    }
+  }, [topicId, language]);
 
   // Salva le posizioni nella cache server-side
   const savePositions = useCallback(async (positions: Record<string, { x: number; y: number }>) => {
-    if (!topic) return;
+    if (!conceptMapId) return;
     try {
       await fetch('/api/concept-map', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, language, positions }),
+        body: JSON.stringify({ conceptMapId, positions }),
       });
-      // Aggiorna anche rawData locale per coerenza
       setRawData(prev => prev ? { ...prev, positions } : null);
     } catch (err) {
       console.error('Failed to save concept map positions:', err);
     }
-  }, [topic, language]);
+  }, [conceptMapId]);
+
+  const reset = useCallback(() => {
+    setRawData(null);
+    setError(null);
+    setConceptMapId(null);
+    setVersion(1);
+    setVersions([]);
+  }, []);
 
   // Trasforma rawData in elementi React Flow usando tema e layout iniettati
   const { graphNodes, graphEdges } = useMemo(() => {
@@ -144,5 +200,5 @@ export function useConceptMap({ topic, language = 'it', config }: UseConceptMapO
     );
   }, [rawData, config]);
 
-  return { loading, error, graphNodes, graphEdges, fetchMap, reset, savePositions };
+  return { loading, error, conceptMapId, version, versions, rawData, graphNodes, graphEdges, fetchMap, regenerate, loadVersion, reset, savePositions };
 }

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.scss";
 import AppShell from "@/components/AppShell";
+import { initSchema } from "@/lib/db";
+
+// Inizializza il DB all'avvio
+initSchema();
 
 export const metadata: Metadata = {
   title: "nakedstack — Piattaforma di Conoscenza",

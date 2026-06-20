@@ -14,23 +14,17 @@
 // Dependency Inversion Principle:
 //   Dipende dall'astrazione IConceptMapCache, non da dettagli.
 
-import { createHash } from 'crypto';
 import type { IConceptMapCache, CacheKey } from './cache';
 import type { ConceptMapPayload } from '@/components/concept-map/types';
 import * as db from '@/lib/db';
 
 /**
- * Deriva una chiave di cache deterministica da topic + language.
- * SHA-256 garantisce che la stessa coppia (topic, language)
- * produca sempre lo stesso hash, senza collisioni pratiche.
+ * Deriva una chiave di cache deterministica da topicId + language.
  *
  * Single Responsibility: solo calcolo della chiave.
  */
-export function deriveCacheKey(topic: string, language: string): CacheKey {
-  // Normalizza: trim + lowercase per coerenza
-  const normalized = `${topic.trim().toLowerCase()}|${language}`;
-  const hash = createHash('sha256').update(normalized).digest('hex');
-  return { hash, topic: topic.trim(), language };
+export function deriveCacheKey(topicId: string, language: string): CacheKey {
+  return { topicId, language };
 }
 
 /**
@@ -40,20 +34,23 @@ export function deriveCacheKey(topic: string, language: string): CacheKey {
  * Ogni operazione è atomica e idempotente grazie a ON CONFLICT.
  */
 export class DatabaseConceptMapCache implements IConceptMapCache {
-  async get(key: CacheKey): Promise<ConceptMapPayload | null> {
-    return db.getConceptMap(key.hash);
+  async get(key: CacheKey): Promise<{ id: number; payload: ConceptMapPayload } | null> {
+    const row = await db.getLatestConceptMap(key.topicId, key.language);
+    if (!row) return null;
+    return { id: row.id, payload: row.payload };
   }
 
-  async set(key: CacheKey, payload: ConceptMapPayload): Promise<void> {
-    await db.saveConceptMap(key.hash, key.topic, key.language, payload);
+  async set(key: CacheKey, payload: ConceptMapPayload): Promise<number> {
+    const result = await db.saveConceptMap(key.topicId, key.language, payload);
+    return result.id;
   }
 
   async delete(key: CacheKey): Promise<void> {
-    await db.deleteConceptMap(key.hash);
+    await db.deleteConceptMap(key.topicId, key.language);
   }
 
   async has(key: CacheKey): Promise<boolean> {
-    return db.conceptMapExists(key.hash);
+    return db.conceptMapExists(key.topicId, key.language);
   }
 }
 

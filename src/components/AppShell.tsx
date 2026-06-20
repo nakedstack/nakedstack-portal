@@ -17,6 +17,7 @@ function getPageTitle(pathname: string): string {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === '/';
+  const isStudio = pathname.startsWith('/studio');
   const pageTitle = getPageTitle(pathname);
 
   return (
@@ -27,7 +28,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="content">
           {children}
         </div>
-        <footer className="page-footer">
+        {!isStudio && (
+          <footer className="page-footer">
           <div className="page-footer__inner">
             <div className="page-footer__brand">
               <span className="page-footer__logo">naked<span>stack</span></span>
@@ -43,6 +45,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </footer>
+        )}
       </main>
     </NavProvider>
   );

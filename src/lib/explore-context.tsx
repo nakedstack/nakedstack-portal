@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import type { Language, DetailLevel } from '@/lib/ai/prompts';
 import type { ParsedResponse } from '@/lib/ai/parser';
+import { stripRestatedQuestion } from '@/lib/ai/response-cleaner';
 import * as Storage from '@/lib/storage';
 import type { SavedTopic, ChatEntry } from '@/lib/storage';
 
@@ -129,12 +130,16 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         throw new Error(err.error || 'Search failed');
       }
 
-      const data: ParsedResponse & { query: string } = await res.json();
+      const data: ParsedResponse = await res.json();
+
+      // Pulisci il testo della risposta da eventuali ripetizioni della domanda
+      const cleanedText = stripRestatedQuestion(data.text, query);
+      const cleaned: ParsedResponse = { ...data, text: cleanedText };
 
       // Auto-save as a new topic with original query as title
       const saved = await Storage.saveTopic({
         title: query,
-        results: data,
+        results: cleaned,
         chatHistory: [],
         language: state.language,
         detailLevel: state.detailLevel,
@@ -144,7 +149,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
 
       setState(prev => ({
         ...prev,
-        results: data,
+        results: cleaned,
         isLoading: false,
         currentTopicId: saved.id,
         savedTopics: topics,
@@ -154,13 +159,13 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
       fetch('/api/title', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, context: data.text }),
+        body: JSON.stringify({ query, context: cleanedText }),
       }).then(r => r.json()).then(d => {
         if (d.title && d.title !== query) {
           Storage.saveTopic({
             id: saved.id,
             title: d.title,
-            results: data,
+            results: cleaned,
             chatHistory: [],
             language: state.language,
             detailLevel: state.detailLevel,
@@ -173,7 +178,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
       }).catch(() => { /* title generation failed, keep original */ });
 
       // Fetch suggestions after results
-      fetchSuggestions(query, data.text);
+      fetchSuggestions(query, cleanedText);
 
     } catch (err) {
       setState(prev => ({
@@ -243,25 +248,29 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         throw new Error(err.error || 'Search failed');
       }
 
-      const data: ParsedResponse & { query: string } = await res.json();
+      const data: ParsedResponse = await res.json();
+
+      // Pulisci anche qui
+      const exCleanedText = stripRestatedQuestion(data.text, term);
+      const exCleaned: ParsedResponse = { ...data, text: exCleanedText };
 
       const breadcrumbItem: BreadcrumbItem = {
         term,
         query: term,
-        response: data,
+        response: exCleaned,
       };
 
       setState(prev => ({
         ...prev,
         query: term,
-        results: data,
+        results: exCleaned,
         breadcrumbs: [...prev.breadcrumbs, breadcrumbItem],
         chatHistory: [],
         suggestions: [],
         isLoading: false,
       }));
 
-      fetchSuggestions(term, data.text);
+      fetchSuggestions(term, exCleanedText);
 
     } catch (err) {
       setState(prev => ({
@@ -303,7 +312,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
       const assistantEntry: ChatEntry = { role: 'assistant', content: data.answer };
 
       setState(prev => {
-        const updated = [...prev.chatHistory, newEntry, assistantEntry];
+        const updated = [...prev.chatHistory, assistantEntry];
         if (prev.currentTopicId) {
           Storage.updateTopicChat(prev.currentTopicId, updated); // fire-and-forget
         }
@@ -364,19 +373,34 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadTopic = useCallback(async (id: string) => {
-    const topic = await Storage.getTopic(id);
-    if (!topic) return;
-    setState(prev => ({
-      ...prev,
-      query: topic.title,
-      results: topic.results,
-      chatHistory: topic.chatHistory,
-      breadcrumbs: [],
-      suggestions: [],
-      error: null,
-      currentTopicId: topic.id,
-    }));
-  }, []);
+    try {
+      const topic = await Storage.getTopic(id);
+      if (!topic) return;
+
+      // Pulisci anche i topic vecchi (salvati prima del fix)
+      const cleanedText = stripRestatedQuestion(topic.results.text, topic.title);
+      const cleanedResults: ParsedResponse = cleanedText !== topic.results.text
+        ? { ...topic.results, text: cleanedText }
+        : topic.results;
+
+      setState(prev => ({
+        ...prev,
+        query: topic.title,
+        results: cleanedResults,
+        chatHistory: topic.chatHistory,
+        breadcrumbs: [],
+        suggestions: [],
+        error: null,
+        currentTopicId: topic.id,
+      }));
+
+      // Rigenera i suggerimenti per topic vecchi che non li hanno
+      fetchSuggestions(topic.title, cleanedResults.text);
+    } catch (err) {
+      // Topic non trovato (es. dopo migrazione schema) → ignora
+      console.warn('Failed to load topic:', id, err instanceof Error ? err.message : err);
+    }
+  }, [fetchSuggestions]);
 
   const saveCurrentTopic = useCallback(async () => {
     setState(prev => {

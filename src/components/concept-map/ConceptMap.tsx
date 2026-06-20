@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -25,7 +25,17 @@ import AutoFitView from './AutoFitView';
 import ConceptNode from './ConceptNode';
 import ConceptEdge from './ConceptEdge';
 import Legend from './Legend';
-import type { ConceptNodeData, ConceptEdgeData } from './types';
+import ConceptMapHeader from './ConceptMapHeader';
+import { NodeSidebarProvider, useNodeSidebar } from './NodeSidebarContext';
+import { useNodeSidebarDerived } from './useNodeSidebar';
+import { useNodeDescription } from './useNodeDescription';
+import NodeSidebar from './NodeSidebar';
+import NodeChatInput from './NodeChatInput';
+import FormattedText from './FormattedText';
+import type { ConceptNodeData, ConceptEdgeData, RawGraphNode, RawGraphEdge } from './types';
+import type { NodeDetailSection } from './NodeSidebarContext';
+import type { ChatEntry } from '@/lib/storage';
+import type { Language, DetailLevel } from '@/lib/ai/prompts';
 
 // ============================================================
 // Registro statico node/edge types
@@ -40,12 +50,26 @@ const DEFAULT_EDGE_TYPES = {
 };
 
 // ============================================================
+// ConceptMap — Wrapper: fornisce NodeSidebarProvider (DIP)
+// ============================================================
 
 export default function ConceptMap() {
-  const { results } = useExplore();
-  const config = useConceptMapConfig();
+  return (
+    <NodeSidebarProvider>
+      <ConceptMapInner />
+    </NodeSidebarProvider>
+  );
+}
 
-  const [isOpen, setIsOpen] = useState(false);
+// ============================================================
+// ConceptMapInner — Logica interna (SRP: orchestrazione mappa)
+// ============================================================
+
+function ConceptMapInner() {
+  const { results, chatHistory, language, detailLevel, currentTopicId } = useExplore();
+  const config = useConceptMapConfig();
+  const { openSidebar } = useNodeSidebar();
+
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Nodo selezionato e nodo hoverato (tracciati separatamente per priorità)
@@ -54,8 +78,9 @@ export default function ConceptMap() {
 
   const topic = results?.text.slice(0, 100) ?? null;
 
-  const { loading, error, graphNodes, graphEdges, fetchMap, reset, savePositions } = useConceptMap({
+  const { loading, error, conceptMapId, version, versions, rawData, graphNodes, graphEdges, fetchMap, regenerate, loadVersion, savePositions } = useConceptMap({
     topic,
+    topicId: currentTopicId,
     language: 'it',
     config,
   });
@@ -161,16 +186,12 @@ export default function ConceptMap() {
     });
   }, [selectedNodeId, hoveredNodeId, nodes]);
 
-  const handleToggle = () => {
-    if (!isOpen) {
-      if (graphNodes.length === 0 && !error) {
-        fetchMap();
-      }
-    } else {
-      reset();
+  // Auto-fetch al mount (quando il topic è disponibile)
+  useEffect(() => {
+    if (topic && graphNodes.length === 0 && !loading) {
+      fetchMap();
     }
-    setIsOpen(!isOpen);
-  };
+  }, [topic]);
 
   // Handler per hover: mostra edge tratteggiati
   const handleNodeEnter = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -197,6 +218,12 @@ export default function ConceptMap() {
     }
     savePositions(positions);
   }, [savePositions]);
+
+  // Apre la sidebar al click su un nodo
+  const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    const rawNode = rawData?.nodes.find(n => n.id === node.id);
+    openSidebar(node as Node<ConceptNodeData>, rawNode);
+  }, [rawData, openSidebar]);
 
   // Fullscreen: toggle e gestione tasto Escape
   const enterFullscreen = useCallback(() => setIsFullscreen(true), []);
@@ -226,16 +253,8 @@ export default function ConceptMap() {
 
   return (
     <div>
-      {/* Toggle button */}
-      <div className="concept-map-toggle">
-        <button className="concept-map-btn" onClick={handleToggle}>
-          {isOpen ? 'Nascondi mappa concettuale' : 'Mostra mappa concettuale'}
-        </button>
-      </div>
-
-      {isOpen && (
-        <div
-          className="concept-map-container"
+      <div
+        className="concept-map-container"
           style={{
             height: isFullscreen ? '100dvh' : 520,
             ...(isFullscreen
@@ -285,6 +304,7 @@ export default function ConceptMap() {
               elementsSelectable
               onNodeMouseEnter={handleNodeEnter}
               onNodeMouseLeave={handleNodeLeave}
+              onNodeClick={handleNodeClick}
               onSelectionChange={handleSelectionChange}
               onNodeDragStop={handleNodeDragStop}
               proOptions={{ hideAttribution: true }}
@@ -339,13 +359,235 @@ export default function ConceptMap() {
               <p>Nessun nodo disponibile. Riprova.</p>
             </div>
           )}
+
+          {/* Footer: versione + rigenera */}
+          <ConceptMapHeader
+            versions={versions}
+            conceptMapId={conceptMapId}
+            loading={loading}
+            canRegenerate={!!currentTopicId}
+            onVersionChange={loadVersion}
+            onRegenerate={regenerate}
+          />
         </div>
-      )}
+
+      {/* Sidebar dettagli nodo — fuori dal container, overlay sull'intera pagina */}
+      <NodeSidebarConnector
+        rawNodes={rawData?.nodes ?? []}
+        rawEdges={rawData?.edges ?? []}
+        chatHistory={chatHistory}
+        language={language}
+        detailLevel={detailLevel}
+        topic={topic ?? results?.text.slice(0, 80) ?? ''}
+        topicId={currentTopicId}
+        conceptMapId={conceptMapId}
+      />
 
       {/* Legenda (visibile solo quando la mappa ha dati) */}
-      {isOpen && !loading && !error && nodes.length > 0 && (
+      {!loading && !error && nodes.length > 0 && (
         <Legend theme={config.theme} />
       )}
     </div>
+  );
+}
+
+// ============================================================
+// NodeSidebarConnector — Bridge tra rawData, chat e NodeSidebar
+// Inietta la sezione descrizione AI generata con contesto chat + parent.
+// ============================================================
+
+function NodeSidebarConnector({
+  rawNodes,
+  rawEdges,
+  chatHistory,
+  language,
+  detailLevel,
+  topic,
+  topicId,
+  conceptMapId,
+}: {
+  rawNodes: RawGraphNode[];
+  rawEdges: RawGraphEdge[];
+  chatHistory: ChatEntry[];
+  language: Language;
+  detailLevel: DetailLevel;
+  topic: string;
+  topicId: string | null;
+  conceptMapId: number | null;
+}) {
+  const derived = useNodeSidebarDerived(rawNodes, rawEdges);
+  const nodeData = derived.selectedNode?.data as ConceptNodeData | undefined;
+  const nodeId = derived.rawNode?.id ?? '';
+  const nodeLabel = nodeData?.label ?? '';
+
+  // Estrai i nodi parent (incoming edges) per il contesto AI
+  const parentNodes = useMemo(
+    () =>
+      derived.connectedEdges
+        .filter(e => e.direction === 'incoming')
+        .map(e => ({ label: e.otherNodeLabel, relation: e.relation })),
+    [derived.connectedEdges],
+  );
+
+  // Contesto chat: ultimi messaggi per dare continuità
+  const chatContext = useMemo(
+    () =>
+      chatHistory
+        .slice(-6)
+        .map(m => `${m.role === 'user' ? 'Utente' : 'Assistente'}: ${m.content}`)
+        .join('\n'),
+    [chatHistory],
+  );
+
+  const {
+    description,
+    isLoading: descLoading,
+    error: descError,
+    refetch,
+    regenerate: regenerateDesc,
+  } = useNodeDescription({
+    conceptMapId,
+    nodeId,
+    nodeLabel: nodeLabel || null,
+    nodeGroup: nodeData?.group ?? '',
+    topic: topic || '',
+    language,
+    detailLevel,
+    parentNodes,
+    chatContext,
+  });
+
+  // Chat locale alla sidebar (indipendente dal ChatPanel principale)
+  const [nodeChatHistory, setNodeChatHistory] = useState<ChatEntry[]>([]);
+  const [nodeChatLoading, setNodeChatLoading] = useState(false);
+
+  // Reset chat quando cambia nodo
+  useEffect(() => {
+    setNodeChatHistory([]);
+  }, [nodeId]);
+
+  const sendNodeChatMessage = useCallback(async (message: string) => {
+    setNodeChatLoading(true);
+    const entry: ChatEntry = { role: 'user', content: message };
+    setNodeChatHistory(prev => [...prev, entry]);
+
+    const nodeContext = [
+      `Stai rispondendo a una domanda di approfondimento sul concetto "${nodeLabel}" (categoria: ${nodeData?.group ?? ''}).`,
+      description ? `Descrizione del concetto: ${description}` : '',
+      parentNodes.length > 0
+        ? `Collegato a: ${parentNodes.map(p => `"${p.label}" (${p.relation})`).join(', ')}.`
+        : '',
+      'Rispondi in modo conciso e pertinente al concetto specifico, non alla piattaforma in generale.',
+    ].filter(Boolean).join('\n');
+
+    const contextEntry: ChatEntry = { role: 'assistant', content: nodeContext };
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: message,
+          history: [...chatHistory, contextEntry, ...nodeChatHistory],
+          language,
+          detailLevel,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setNodeChatHistory(prev => [...prev, { role: 'assistant', content: data.answer }]);
+    } catch (err) {
+      setNodeChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore: ' + (err instanceof Error ? err.message : 'Sconosciuto') }]);
+    } finally {
+      setNodeChatLoading(false);
+    }
+  }, [chatHistory, nodeChatHistory, language, detailLevel, nodeLabel, nodeData?.group, description, parentNodes]);
+
+  // Click su [[termine]] → invia come messaggio nella chat del nodo
+  const handleKeywordClick = useCallback((term: string) => {
+    sendNodeChatMessage(`Approfondisci "${term}"`);
+  }, [sendNodeChatMessage]);
+
+  // Sezione AI che sovrascrive la "description" statica di default
+  const aiDescriptionSection: NodeDetailSection = {
+    id: 'description',
+    title: 'Descrizione',
+    render: () => (
+      <div className="ns-section-body">
+        {descLoading && (
+          <div className="ns-description-loading">
+            <span>Generando descrizione...</span>
+          </div>
+        )}
+        {descError && (
+          <div className="ns-description-error">
+            <p className="ns-error-text">{descError}</p>
+            <button className="ns-retry-btn" onClick={refetch}>
+              Riprova
+            </button>
+          </div>
+        )}
+        {!descLoading && !descError && description && (
+          <>
+            <p className="ns-description">
+              <FormattedText text={description} onKeywordClick={handleKeywordClick} />
+            </p>
+            <button
+              className="ns-retry-btn ns-regenerate-btn"
+              onClick={regenerateDesc}
+              title="Genera una nuova descrizione per questo nodo"
+            >
+              Rigenera descrizione
+            </button>
+          </>
+        )}
+        {!descLoading && !descError && !description && (
+          <p className="ns-description ns-description--empty">
+            Nessuna descrizione disponibile.
+          </p>
+        )}
+      </div>
+    ),
+  };
+
+  // Sezione chat history locale
+  const chatSection: NodeDetailSection = {
+    id: 'node-chat',
+    title: 'Approfondimenti',
+    render: () => (
+      <div className="ns-section-body">
+        {nodeChatHistory.length === 0 && (
+          <p className="ns-description ns-description--empty">
+            Fai una domanda su "{nodeLabel}" per approfondire.
+          </p>
+        )}
+        {nodeChatHistory.map((entry, i) => (
+          <div key={i} className={`ns-chat-msg ns-chat-msg--${entry.role}`}>
+            <span className="ns-chat-role">{entry.role === 'user' ? 'Tu' : 'AI'}</span>
+            <p className="ns-chat-text">
+              <FormattedText text={entry.content} onKeywordClick={handleKeywordClick} />
+            </p>
+          </div>
+        ))}
+        {nodeChatLoading && (
+          <div className="ns-description-loading">
+            <span>Rispondendo...</span>
+          </div>
+        )}
+      </div>
+    ),
+  };
+
+  return (
+    <NodeSidebar
+      sections={[aiDescriptionSection, chatSection]}
+      footer={
+        <NodeChatInput
+          nodeLabel={nodeLabel}
+          onSend={sendNodeChatMessage}
+          loading={nodeChatLoading}
+        />
+      }
+    />
   );
 }

@@ -23,14 +23,15 @@ export function buildSystemPrompt(language: Language, detailLevel: DetailLevel):
 REGOLE FONDAMENTALI:
 1. Rispondi ESCLUSIVAMENTE in ${langName}. NON mescolare altre lingue.
 2. ${detailInst}
-3. IMPORTANTISSIMO: Nel testo della risposta, racchiudi tra doppie parentesi quadre [[ ]] i termini chiave che l'utente potrebbe voler approfondire. Esempio: "Un [[database relazionale]] organizza i dati in [[tabelle]] collegate da [[chiavi esterne]], garantendo coerenza tramite [[transazioni ACID]]."
-4. Marca come clickable SOLO i termini tecnici significativi (massimo 8-10 per risposta). NON marcare parole comuni.
-5. Struttura la risposta in paragrafi brevi e chiari.
-6. Usa elenchi puntati quando utile.
-7. Alla fine della risposta, includi una sezione "---RELATED---" seguita da 3-5 argomenti correlati, uno per riga, senza marcatori [[ ]].
-8. NON usare emoji.
-9. NON includere frasi di cortesia o convenevoli. Vai dritto al punto.
-10. Se la domanda non ti e chiara o e fuori tema, chiedi gentilmente chiarimenti.`;
+3. IMPORTANTISSIMO: NON ripetere la domanda dell'utente all'inizio della risposta. NON usare titoli che ripetono la domanda. Vai subito al contenuto.
+4. IMPORTANTISSIMO: Nel testo della risposta, racchiudi tra doppie parentesi quadre [[ ]] i termini chiave che l'utente potrebbe voler approfondire. Esempio: "Un [[database relazionale]] organizza i dati in [[tabelle]] collegate da [[chiavi esterne]], garantendo coerenza tramite [[transazioni ACID]]."
+5. Marca come clickable SOLO i termini tecnici significativi (massimo 8-10 per risposta). NON marcare parole comuni.
+6. Struttura la risposta in paragrafi brevi e chiari.
+7. Usa elenchi puntati quando utile.
+8. Alla fine della risposta, includi una sezione "---RELATED---" seguita da 3-5 argomenti correlati, uno per riga, senza marcatori [[ ]].
+9. NON usare emoji.
+10. NON includere frasi di cortesia o convenevoli. Vai dritto al punto.
+11. Se la domanda non ti e chiara o e fuori tema, chiedi gentilmente chiarimenti.`;
 }
 
 export function buildChatSystemPrompt(language: Language, detailLevel: DetailLevel): string {
