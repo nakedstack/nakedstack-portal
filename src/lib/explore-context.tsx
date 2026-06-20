@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import type { Language, DetailLevel } from '@/lib/ai/prompts';
 import type { ParsedResponse } from '@/lib/ai/parser';
 import { stripRestatedQuestion } from '@/lib/ai/response-cleaner';
+import { computeParagraphDiff, diffHasChanges, type DiffSegment } from '@/lib/diff';
 import * as Storage from '@/lib/storage';
 import type { SavedTopic, ChatEntry } from '@/lib/storage';
 
@@ -31,12 +32,20 @@ interface ExploreState {
   error: string | null;
   currentTopicId: string | null;
   savedTopics: SavedTopic[];
+  /** Incrementato quando l'enrichment agent modifica la concept map (trigger refetch) */
+  conceptMapRefreshNonce: number;
+  /** Diff (vecchio -> nuovo) dell'ultimo arricchimento del testo, per la review evidenziata */
+  enrichmentDiff: DiffSegment[] | null;
 }
 
 interface ExploreContextType extends ExploreState {
   search: (query: string) => Promise<void>;
   exploreKeyword: (term: string) => Promise<void>;
-  sendChatMessage: (message: string) => Promise<void>;
+  sendChatMessage: (message: string) => Promise<string | null>;
+  /** Applica l'output dell'enrichment agent allo stato locale (no re-persist) */
+  applyEnrichment: (payload: { text?: string; conceptMapChanged?: boolean }) => void;
+  /** Nasconde la review evidenziata delle modifiche dell'agent */
+  clearEnrichmentDiff: () => void;
   goBackTo: (index: number) => void;
   setLanguage: (lang: Language) => void;
   setDetailLevel: (level: DetailLevel) => void;
@@ -62,13 +71,17 @@ const defaultState: ExploreState = {
   error: null,
   currentTopicId: null,
   savedTopics: [],
+  conceptMapRefreshNonce: 0,
+  enrichmentDiff: null,
 };
 
 const ExploreContext = createContext<ExploreContextType>({
   ...defaultState,
   search: async () => {},
   exploreKeyword: async () => {},
-  sendChatMessage: async () => {},
+  sendChatMessage: async () => null,
+  applyEnrichment: () => {},
+  clearEnrichmentDiff: () => {},
   goBackTo: () => {},
   setLanguage: () => {},
   setDetailLevel: () => {},
@@ -112,6 +125,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
       results: null,
       chatHistory: [],
       suggestions: [],
+      enrichmentDiff: null,
     }));
 
     try {
@@ -226,6 +240,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         breadcrumbs: prev.breadcrumbs.slice(0, existingIndex + 1),
         chatHistory: [],
         suggestions: [],
+        enrichmentDiff: null,
       }));
       return;
     }
@@ -268,6 +283,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         chatHistory: [],
         suggestions: [],
         isLoading: false,
+        enrichmentDiff: null,
       }));
 
       fetchSuggestions(term, exCleanedText);
@@ -281,7 +297,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
     }
   }, [state.language, state.detailLevel, state.breadcrumbs, fetchSuggestions]);
 
-  const sendChatMessage = useCallback(async (message: string) => {
+  const sendChatMessage = useCallback(async (message: string): Promise<string | null> => {
     const newEntry: ChatEntry = { role: 'user', content: message };
 
     setState(prev => ({
@@ -323,14 +339,46 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         };
       });
 
+      return data.answer as string;
+
     } catch (err) {
       setState(prev => ({
         ...prev,
         chatIsLoading: false,
         error: err instanceof Error ? err.message : 'Unknown error',
       }));
+      return null;
     }
   }, [state.language, state.detailLevel, state.chatHistory]);
+
+  // Applica l'output dell'enrichment agent allo stato locale.
+  // La persistenza e gia avvenuta server-side (/api/enrich): qui aggiorniamo
+  // solo la UI (testo del topic) e segnaliamo il refresh della concept map.
+  const applyEnrichment = useCallback((payload: { text?: string; conceptMapChanged?: boolean }) => {
+    setState(prev => {
+      const nextNonce = payload.conceptMapChanged
+        ? prev.conceptMapRefreshNonce + 1
+        : prev.conceptMapRefreshNonce;
+
+      // Nessun cambio di testo: aggiorna solo la mappa
+      if (!payload.text || !prev.results || payload.text === prev.results.text) {
+        return { ...prev, conceptMapRefreshNonce: nextNonce };
+      }
+
+      // Calcola il diff (vecchio -> nuovo) per la review evidenziata
+      const diff = computeParagraphDiff(prev.results.text, payload.text);
+      return {
+        ...prev,
+        results: { ...prev.results, text: payload.text },
+        enrichmentDiff: diffHasChanges(diff) ? diff : null,
+        conceptMapRefreshNonce: nextNonce,
+      };
+    });
+  }, []);
+
+  const clearEnrichmentDiff = useCallback(() => {
+    setState(prev => (prev.enrichmentDiff ? { ...prev, enrichmentDiff: null } : prev));
+  }, []);
 
   const goBackTo = useCallback((index: number) => {
     if (index < 0) {
@@ -343,6 +391,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         chatHistory: [],
         suggestions: [],
         error: null,
+        enrichmentDiff: null,
       }));
       return;
     }
@@ -356,6 +405,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         breadcrumbs: prev.breadcrumbs.slice(0, index + 1),
         chatHistory: [],
         suggestions: [],
+        enrichmentDiff: null,
       }));
     }
   }, [state.breadcrumbs]);
@@ -378,10 +428,14 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
       if (!topic) return;
 
       // Pulisci anche i topic vecchi (salvati prima del fix)
-      const cleanedText = stripRestatedQuestion(topic.results.text, topic.title);
-      const cleanedResults: ParsedResponse = cleanedText !== topic.results.text
-        ? { ...topic.results, text: cleanedText }
-        : topic.results;
+      const cleanedResults: ParsedResponse | null = topic.results
+        ? (() => {
+            const cleanedText = stripRestatedQuestion(topic.results.text, topic.title);
+            return cleanedText !== topic.results.text
+              ? { ...topic.results, text: cleanedText }
+              : topic.results;
+          })()
+        : null;
 
       setState(prev => ({
         ...prev,
@@ -392,10 +446,13 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         suggestions: [],
         error: null,
         currentTopicId: topic.id,
+        enrichmentDiff: null,
       }));
 
       // Rigenera i suggerimenti per topic vecchi che non li hanno
-      fetchSuggestions(topic.title, cleanedResults.text);
+      if (cleanedResults) {
+        fetchSuggestions(topic.title, cleanedResults.text);
+      }
     } catch (err) {
       // Topic non trovato (es. dopo migrazione schema) → ignora
       console.warn('Failed to load topic:', id, err instanceof Error ? err.message : err);
@@ -441,6 +498,8 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         search,
         exploreKeyword,
         sendChatMessage,
+        applyEnrichment,
+        clearEnrichmentDiff,
         goBackTo,
         setLanguage: setLanguageHandler,
         setDetailLevel: setDetailLevelHandler,

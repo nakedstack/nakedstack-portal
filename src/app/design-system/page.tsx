@@ -369,7 +369,7 @@ nicolay   5678  0.3  3.1 987654 123456 ?   S    10:25   0:05 code-insiders</code
           { icon: 'X', label: 'Chiudi', size: 18, usage: 'DetailCard, Reading Overlay' },
           { icon: 'FilePdf', label: 'PDF', size: 18, usage: 'ExportButtons (scarica PDF)' },
           { icon: 'BookOpen', label: 'Lettura', size: 18, usage: 'ExportButtons (modalità lettura)' },
-          { icon: 'PaperPlaneRight', label: 'Invia', size: 18, usage: 'ChatPanel (invia messaggio)' },
+          { icon: 'PaperPlaneRight', label: 'Invia', size: 18, usage: 'Chat (invia messaggio)' },
           { icon: 'GithubLogo', label: 'GitHub', size: 16, usage: 'AppShell (footer link)' },
           { icon: 'Cpu', label: 'CPU / Kernel', size: 24, usage: 'Card (Linux Kernel example)' },
           { icon: 'Database', label: 'Database', size: 24, usage: 'Card (DB Internals example)' },

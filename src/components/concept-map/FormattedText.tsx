@@ -1,57 +1,34 @@
 // ============================================================
-// FormattedText — Renderizza testo con [[termini]] evidenziati
+// FormattedText — Testo formattato: paragrafi, liste, grassetto,
+// codice inline e [[termini]] cliccabili. Tronca a ---RELATED---.
+// Delega il parsing markdown al renderer condiviso (render-utils),
+// passando l'handler dei termini chiave (DRY + fix anti-freeze).
 // ============================================================
 
 'use client';
 
-import { useCallback } from 'react';
-
-const KEYWORD_REGEX = /\[\[(.+?)\]\]/g;
+import { renderFormattedParagraph, splitIntoBlocks } from '@/lib/render-utils';
 
 export interface FormattedTextProps {
   text: string;
-  /** Callback quando si clicca un [[termine]]. Se undefined, i termini non sono cliccabili. */
+  /** Callback quando si clicca un [[termine]]. Se undefined, naviga via exploreKeyword. */
   onKeywordClick?: (term: string) => void;
 }
 
-/**
- * Trasforma `testo con [[termini chiave]]` in React nodes
- * dove i termini sono evidenziati e opzionalmente cliccabili.
- * Tronca al marker ---RELATED--- se presente.
- */
 export default function FormattedText({ text, onKeywordClick }: FormattedTextProps) {
-  const handleClick = useCallback((term: string) => {
-    onKeywordClick?.(term);
-  }, [onKeywordClick]);
-
-  const clickable = !!onKeywordClick;
-
-  // Tronca al marker ---RELATED---
+  // Tronca al marker ---RELATED--- e separa in paragrafi
   const displayText = text.split('---RELATED---')[0].trim();
+  const paragraphs = splitIntoBlocks(displayText);
 
-  const parts = displayText.split(KEYWORD_REGEX);
+  if (paragraphs.length === 0) return null;
 
   return (
     <>
-      {parts.map((part, i) => {
-        if (i % 2 === 1) {
-          return clickable ? (
-            <button
-              key={i}
-              className="ft-keyword"
-              onClick={() => handleClick(part)}
-              title={`Approfondisci "${part}"`}
-            >
-              {part}
-            </button>
-          ) : (
-            <span key={i} className="ft-keyword ft-keyword--static">
-              {part}
-            </span>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
+      {paragraphs.map((p, i) => (
+        <div key={i} className="ft-block">
+          {renderFormattedParagraph(p, i, onKeywordClick)}
+        </div>
+      ))}
     </>
   );
 }

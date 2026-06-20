@@ -8,7 +8,7 @@ import BreadcrumbTrail from '@/components/BreadcrumbTrail';
 import SearchResults from '@/components/SearchResults';
 import DetailCard from '@/components/DetailCard';
 import SuggestionsBar from '@/components/SuggestionsBar';
-import ChatPanel from '@/components/ChatPanel';
+import { ChatDock } from '@/components/chat';
 import ExportButtons from '@/components/ExportButtons';
 import { ConceptMap, ConceptMapProvider } from '@/components/concept-map';
 
@@ -61,7 +61,7 @@ export default function StudioPage() {
             <ConceptMap />
           </ConceptMapProvider>
           <SuggestionsBar />
-          <ChatPanel />
+          <ChatDock />
         </>
       )}
 

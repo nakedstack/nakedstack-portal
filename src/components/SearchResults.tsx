@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useExplore } from '@/lib/explore-context';
-import { splitIntoParagraphs } from '@/lib/ai/parser';
-import { renderFormattedParagraph } from '@/lib/render-utils';
+import { renderFormattedParagraph, splitIntoBlocks } from '@/lib/render-utils';
+import DiffReview from '@/components/DiffReview';
 
 // ---- Types ----
 
@@ -15,12 +15,6 @@ interface SelectionMenu {
   paragraphText: string;
 }
 
-interface ExpandedState {
-  original: string;
-  expanded: string;
-  deepenedTerm: string;
-}
-
 // ---- Helpers ----
 
 function escapeRegex(str: string): string {
@@ -30,12 +24,10 @@ function escapeRegex(str: string): string {
 // ---- Component ----
 
 export default function SearchResults() {
-  const { results, language, detailLevel } = useExplore();
+  const { results, language, detailLevel, enrichmentDiff, clearEnrichmentDiff, applyEnrichment, currentTopicId } = useExplore();
   const containerRef = useRef<HTMLDivElement>(null);
   const paragraphRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [selectionMenu, setSelectionMenu] = useState<SelectionMenu | null>(null);
-  const [expandedMap, setExpandedMap] = useState<Map<number, ExpandedState>>(new Map());
-  const [collapsedSet, setCollapsedSet] = useState<Set<number>>(new Set());
   const [expandingIndex, setExpandingIndex] = useState<number | null>(null);
 
   const findParagraphIndex = useCallback((range: Range): number => {
@@ -69,11 +61,8 @@ export default function SearchResults() {
       const pIndex = findParagraphIndex(range);
       if (pIndex < 0) { setSelectionMenu(null); return; }
 
-      const paragraphs = splitIntoParagraphs(results?.text || '');
-      const expanded = expandedMap.get(pIndex);
-      const currentText = (expanded && !collapsedSet.has(pIndex))
-        ? expanded.expanded
-        : (expanded?.original || paragraphs[pIndex] || '');
+      const paragraphs = splitIntoBlocks(results?.text || '');
+      const currentText = paragraphs[pIndex] || '';
 
       const rect = range.getBoundingClientRect();
       setSelectionMenu({
@@ -84,7 +73,7 @@ export default function SearchResults() {
         paragraphText: currentText,
       });
     }, 10);
-  }, [results, expandedMap, collapsedSet, findParagraphIndex]);
+  }, [results, findParagraphIndex]);
 
   const handleExpandInline = useCallback(async (menu: SelectionMenu, customInstruction?: string) => {
     setSelectionMenu(null);
@@ -97,61 +86,44 @@ export default function SearchResults() {
         language,
         detailLevel,
       };
-      if (customInstruction) {
-        body.customInstruction = customInstruction;
-      }
+      if (customInstruction) body.customInstruction = customInstruction;
 
       const res = await fetch('/api/expand', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Expand failed');
-      }
+      if (!res.ok) throw new Error((await res.json()).error || 'Expand failed');
 
       const data = await res.json();
 
-      // Wrap deepened term in [[...]] so renderer shows it as clickable keyword
+      // Assicura che il termine selezionato sia marcato come [[keyword]]
       let expandedText: string = data.expanded;
       const marker = `[[${menu.text}]]`;
       if (!expandedText.includes(marker)) {
-        const regex = new RegExp(escapeRegex(menu.text), 'i');
-        expandedText = expandedText.replace(regex, marker);
+        expandedText = expandedText.replace(new RegExp(escapeRegex(menu.text), 'i'), marker);
       }
 
-      setExpandedMap(prev => {
-        const next = new Map(prev);
-        next.set(menu.paragraphIndex, {
-          original: menu.paragraphText,
-          expanded: expandedText,
-          deepenedTerm: menu.text,
-        });
-        return next;
-      });
+      // Calcola il nuovo testo completo sostituendo il paragrafo originale
+      const newFullText = (results?.text || '').replace(menu.paragraphText, expandedText);
 
-      setCollapsedSet(prev => {
-        const next = new Set(prev);
-        next.delete(menu.paragraphIndex);
-        return next;
-      });
+      // Applica tramite la stessa pipeline dell'enrichment (diff review + stato)
+      applyEnrichment({ text: newFullText });
+
+      // Persiste su DB se il topic e salvato (fire-and-forget)
+      if (currentTopicId) {
+        fetch('/api/topic-text', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicId: currentTopicId, text: newFullText }),
+        }).catch(() => {});
+      }
     } catch (err) {
       console.error('Expand error:', err);
     } finally {
       setExpandingIndex(null);
     }
-  }, [language, detailLevel]);
-
-  const toggleCollapse = useCallback((index: number) => {
-    setCollapsedSet(prev => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  }, []);
+  }, [language, detailLevel, results, applyEnrichment, currentTopicId]);
 
   useEffect(() => {
     if (!selectionMenu) return;
@@ -166,7 +138,16 @@ export default function SearchResults() {
 
   if (!results) return null;
 
-  const paragraphs = splitIntoParagraphs(results.text);
+  // Modalita review: mostra il diff evidenziato dell'ultimo arricchimento
+  if (enrichmentDiff && enrichmentDiff.length > 0) {
+    return (
+      <div className="search-results">
+        <DiffReview diff={enrichmentDiff} onDone={clearEnrichmentDiff} />
+      </div>
+    );
+  }
+
+  const paragraphs = splitIntoBlocks(results.text);
 
   return (
     <div className="search-results" ref={containerRef} onMouseUp={handleMouseUp}>
@@ -174,18 +155,13 @@ export default function SearchResults() {
         <p style={{ color: '#5B6B86' }}>Nessun risultato generato. Riprova con una domanda diversa.</p>
       )}
 
-      {paragraphs.map((_original, i) => {
-        const expanded = expandedMap.get(i);
-        const isCollapsed = collapsedSet.has(i);
+      {paragraphs.map((paragraph, i) => {
         const isExpanding = expandingIndex === i;
-
-        const showExpanded = expanded && !isCollapsed;
-        const displayText = showExpanded ? expanded.expanded : (expanded?.original || paragraphs[i]);
 
         return (
           <div
             key={i}
-            className={`result-block${isExpanding ? ' result-block--expanding' : ''}${expanded ? ' result-block--has-expand' : ''}`}
+            className={`result-block${isExpanding ? ' result-block--expanding' : ''}`}
             ref={(el) => { if (el) paragraphRefs.current.set(i, el); }}
             data-paragraph-index={i}
           >
@@ -196,41 +172,7 @@ export default function SearchResults() {
               </div>
             )}
 
-            {showExpanded && (
-              <div className="result-block__diff-badge">
-                <span className="result-block__diff-legend">
-                  <span className="result-block__diff-swatch result-block__diff-swatch--added" />
-                  aggiunte
-                </span>
-                <button
-                  className="result-block__toggle-btn"
-                  onClick={() => toggleCollapse(i)}
-                  title="Torna alla versione originale"
-                >
-                  Condensa
-                </button>
-              </div>
-            )}
-
-            {expanded && isCollapsed && (
-              <div className="result-block__diff-badge result-block__diff-badge--collapsed">
-                <span style={{ fontSize: '0.78rem', color: '#8895AD' }}>
-                  Versione originale
-                </span>
-                <button
-                  className="result-block__toggle-btn"
-                  onClick={() => toggleCollapse(i)}
-                  title="Mostra versione arricchita"
-                >
-                  Espandi
-                </button>
-              </div>
-            )}
-
-            {showExpanded
-              ? renderFormattedParagraph(displayText, i)
-              : renderFormattedParagraph(displayText, i)
-            }
+            {renderFormattedParagraph(paragraph, i)}
           </div>
         );
       })}

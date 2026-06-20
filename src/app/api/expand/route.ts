@@ -28,23 +28,25 @@ export async function POST(request: NextRequest) {
     const detailInst = DETAIL_INSTRUCTIONS[detailLevel];
 
     const enrichmentGoal = customInstruction
-      ? `Riguardo al termine "${term}", l'utente chiede: "${customInstruction}". Rispondi a questa richiesta integrando la risposta nel paragrafo.`
+      ? `Riguardo al termine "${term}", l'utente chiede: "${customInstruction}". Rispondi a questa richiesta integrando la risposta nel testo.`
       : `inserisci una spiegazione piu approfondita, fluida e naturale, integrata nel discorso. ${detailInst}.`;
 
-    const prompt = `Riscrivi il seguente paragrafo in ${langName}, arricchendolo in base alla richiesta sul termine "${term}".
+    const prompt = `Espandi e arricchisci il seguente testo in ${langName}, approfondendo il termine "${term}".
 
 Regole:
-- Il termine "${term}" DEVE comparire nel testo riscritto almeno una volta.
+- Il termine "${term}" DEVE comparire nel testo arricchito almeno una volta.
 - ${enrichmentGoal}
-- NON cambiare l'argomento generale del paragrafo. Arricchisci SOLO la parte relativa a "${term}".
-- Mantieni lo stesso tono e stile del paragrafo originale.
-- NON aggiungere convenevoli, introduzioni o conclusioni. Restituisci SOLO il paragrafo riscritto.
+- NON cambiare l'argomento generale del testo. Approfondisci SOLO la parte relativa a "${term}".
+- Puoi aggiungere paragrafi aggiuntivi, elenchi puntati ("- ") o numerati ("1. "), esempi pratici, tabelle markdown (| Col | Col | / |---|---| / | val | val |) o blocchi di codice \`\`\`nomelingua ... \`\`\` dove utile. Separa paragrafi con una riga vuota.
+- Usa **grassetto** per i termini tecnici piu importanti.
+- Usa [[termine]] per i concetti chiave che l'utente potrebbe voler approfondire (massimo 4, solo concetti tecnici significativi). Il termine "${term}" puo essere marcato come [[${term}]] se appropriato.
+- NON aggiungere convenevoli, introduzioni o conclusioni. Restituisci SOLO il contenuto arricchito.
 - NON usare emoji.
 - NON racchiudere la risposta tra virgolette.
-- NON usare parentesi quadre, asterischi doppi o altri marcatori attorno al termine.
-- Se il paragrafo originale e in ${langName}, rispondi in ${langName}.
+- Usa SEMPRE marcatori bilanciati: ogni **, \` e [[ deve avere la chiusura corrispondente (**, \` e ]]).
+- Se il testo originale e in ${langName}, rispondi in ${langName}.
 
-Paragrafo originale:
+Testo originale:
 """
 ${paragraph}
 """`;

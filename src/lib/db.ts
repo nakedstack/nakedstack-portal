@@ -24,6 +24,9 @@ async function ensureSchema(): Promise<void> {
     await ensureTableColumns(client, 'node_descriptions', [
       'id', 'concept_map_id', 'node_id', 'version', 'node_label', 'node_group', 'description', 'created_at',
     ]);
+    await ensureTableColumns(client, 'node_chats', [
+      'id', 'concept_map_id', 'node_id', 'chat_history', 'updated_at',
+    ]);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS topics (
@@ -65,6 +68,15 @@ async function ensureSchema(): Promise<void> {
       );
 
       CREATE INDEX IF NOT EXISTS idx_node_descriptions_created_at ON node_descriptions(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS node_chats (
+        id BIGSERIAL PRIMARY KEY,
+        concept_map_id BIGINT NOT NULL REFERENCES concept_maps(id) ON DELETE CASCADE,
+        node_id TEXT NOT NULL,
+        chat_history JSONB NOT NULL DEFAULT '[]'::jsonb,
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (concept_map_id, node_id)
+      );
     `);
   } finally {
     client.release();
@@ -81,7 +93,7 @@ async function ensureTableColumns(
   expectedColumns: string[],
 ): Promise<void> {
   // Whitelist: solo tabelle note
-  const ALLOWED = ['topics', 'concept_maps', 'node_descriptions'];
+  const ALLOWED = ['topics', 'concept_maps', 'node_descriptions', 'node_chats'];
   if (!ALLOWED.includes(tableName)) return;
 
   const { rows: tableExists } = await client.query(
@@ -209,6 +221,18 @@ export async function updateTopicChat(id: string, chatHistory: ChatEntry[]): Pro
   );
 }
 
+/** Aggiorna i `results` dell'ultima versione del topic (merge enrichment in-place) */
+export async function updateTopicResults(id: string, results: ParsedResponse): Promise<void> {
+  await ensureSchema();
+  await pool.query(
+    `UPDATE topics SET results = $1::jsonb
+     WHERE id = $2 AND version = (
+       SELECT MAX(version) FROM topics WHERE id = $2
+     )`,
+    [JSON.stringify(results), id]
+  );
+}
+
 // ============================================================
 // Concept Map — Queries (SRP: separate dal CRUD topics)
 // ============================================================
@@ -324,5 +348,34 @@ export async function saveNodeDescription(
     `INSERT INTO node_descriptions (concept_map_id, node_id, version, node_label, node_group, description)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [conceptMapId, nodeId, nextVersion, nodeLabel, nodeGroup, description]
+  );
+}
+
+// ============================================================
+// Node Chats — Queries (cronologia chat per nodo, persistente)
+// ============================================================
+
+export async function getNodeChat(conceptMapId: number, nodeId: string): Promise<ChatEntry[]> {
+  await ensureSchema();
+  const { rows } = await pool.query(
+    'SELECT chat_history FROM node_chats WHERE concept_map_id = $1 AND node_id = $2 LIMIT 1',
+    [conceptMapId, nodeId]
+  );
+  if (rows.length === 0) return [];
+  return (rows[0].chat_history as ChatEntry[]) || [];
+}
+
+export async function saveNodeChat(
+  conceptMapId: number,
+  nodeId: string,
+  chatHistory: ChatEntry[],
+): Promise<void> {
+  await ensureSchema();
+  await pool.query(
+    `INSERT INTO node_chats (concept_map_id, node_id, chat_history, updated_at)
+     VALUES ($1, $2, $3::jsonb, NOW())
+     ON CONFLICT (concept_map_id, node_id)
+     DO UPDATE SET chat_history = EXCLUDED.chat_history, updated_at = NOW()`,
+    [conceptMapId, nodeId, JSON.stringify(chatHistory)]
   );
 }

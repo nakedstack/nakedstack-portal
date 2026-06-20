@@ -30,7 +30,7 @@ import { NodeSidebarProvider, useNodeSidebar } from './NodeSidebarContext';
 import { useNodeSidebarDerived } from './useNodeSidebar';
 import { useNodeDescription } from './useNodeDescription';
 import NodeSidebar from './NodeSidebar';
-import NodeChatInput from './NodeChatInput';
+import { Chat, useNodeChatAdapter } from '@/components/chat';
 import FormattedText from './FormattedText';
 import type { ConceptNodeData, ConceptEdgeData, RawGraphNode, RawGraphEdge } from './types';
 import type { NodeDetailSection } from './NodeSidebarContext';
@@ -66,7 +66,7 @@ export default function ConceptMap() {
 // ============================================================
 
 function ConceptMapInner() {
-  const { results, chatHistory, language, detailLevel, currentTopicId } = useExplore();
+  const { results, chatHistory, language, detailLevel, currentTopicId, conceptMapRefreshNonce } = useExplore();
   const config = useConceptMapConfig();
   const { openSidebar } = useNodeSidebar();
 
@@ -84,6 +84,15 @@ function ConceptMapInner() {
     language: 'it',
     config,
   });
+
+  // Refetch della mappa quando l'enrichment agent aggiunge nuovi nodi
+  const prevRefreshNonce = useRef(0);
+  useEffect(() => {
+    if (conceptMapRefreshNonce > 0 && conceptMapRefreshNonce !== prevRefreshNonce.current) {
+      prevRefreshNonce.current = conceptMapRefreshNonce;
+      void fetchMap();
+    }
+  }, [conceptMapRefreshNonce, fetchMap]);
 
   // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(graphNodes);
@@ -457,56 +466,20 @@ function NodeSidebarConnector({
     chatContext,
   });
 
-  // Chat locale alla sidebar (indipendente dal ChatPanel principale)
-  const [nodeChatHistory, setNodeChatHistory] = useState<ChatEntry[]>([]);
-  const [nodeChatLoading, setNodeChatLoading] = useState(false);
-
-  // Reset chat quando cambia nodo
-  useEffect(() => {
-    setNodeChatHistory([]);
-  }, [nodeId]);
-
-  const sendNodeChatMessage = useCallback(async (message: string) => {
-    setNodeChatLoading(true);
-    const entry: ChatEntry = { role: 'user', content: message };
-    setNodeChatHistory(prev => [...prev, entry]);
-
-    const nodeContext = [
-      `Stai rispondendo a una domanda di approfondimento sul concetto "${nodeLabel}" (categoria: ${nodeData?.group ?? ''}).`,
-      description ? `Descrizione del concetto: ${description}` : '',
-      parentNodes.length > 0
-        ? `Collegato a: ${parentNodes.map(p => `"${p.label}" (${p.relation})`).join(', ')}.`
-        : '',
-      'Rispondi in modo conciso e pertinente al concetto specifico, non alla piattaforma in generale.',
-    ].filter(Boolean).join('\n');
-
-    const contextEntry: ChatEntry = { role: 'assistant', content: nodeContext };
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: message,
-          history: [...chatHistory, contextEntry, ...nodeChatHistory],
-          language,
-          detailLevel,
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setNodeChatHistory(prev => [...prev, { role: 'assistant', content: data.answer }]);
-    } catch (err) {
-      setNodeChatHistory(prev => [...prev, { role: 'assistant', content: 'Errore: ' + (err instanceof Error ? err.message : 'Sconosciuto') }]);
-    } finally {
-      setNodeChatLoading(false);
-    }
-  }, [chatHistory, nodeChatHistory, language, detailLevel, nodeLabel, nodeData?.group, description, parentNodes]);
+  // Chat del nodo: adapter condiviso (contesto nodo + parent + topic, persistente).
+  // Dopo ogni risposta avvia l'agent di arricchimento agganciato a questo nodo.
+  const nodeChatAdapter = useNodeChatAdapter({
+    conceptMapId,
+    nodeId,
+    nodeLabel,
+    nodeGroup: nodeData?.group ?? '',
+    description: description ?? null,
+    parentNodes,
+    topic: topic || '',
+  });
 
   // Click su [[termine]] → invia come messaggio nella chat del nodo
-  const handleKeywordClick = useCallback((term: string) => {
-    sendNodeChatMessage(`Approfondisci "${term}"`);
-  }, [sendNodeChatMessage]);
+  const handleKeywordClick = nodeChatAdapter.onKeywordClick;
 
   // Sezione AI che sovrascrive la "description" statica di default
   const aiDescriptionSection: NodeDetailSection = {
@@ -529,9 +502,9 @@ function NodeSidebarConnector({
         )}
         {!descLoading && !descError && description && (
           <>
-            <p className="ns-description">
+            <div className="ns-description">
               <FormattedText text={description} onKeywordClick={handleKeywordClick} />
-            </p>
+            </div>
             <button
               className="ns-retry-btn ns-regenerate-btn"
               onClick={regenerateDesc}
@@ -550,44 +523,18 @@ function NodeSidebarConnector({
     ),
   };
 
-  // Sezione chat history locale
+  // Sezione chat: usa il componente <Chat> condiviso, identico ovunque
   const chatSection: NodeDetailSection = {
     id: 'node-chat',
     title: 'Approfondimenti',
     render: () => (
-      <div className="ns-section-body">
-        {nodeChatHistory.length === 0 && (
-          <p className="ns-description ns-description--empty">
-            Fai una domanda su "{nodeLabel}" per approfondire.
-          </p>
-        )}
-        {nodeChatHistory.map((entry, i) => (
-          <div key={i} className={`ns-chat-msg ns-chat-msg--${entry.role}`}>
-            <span className="ns-chat-role">{entry.role === 'user' ? 'Tu' : 'AI'}</span>
-            <p className="ns-chat-text">
-              <FormattedText text={entry.content} onKeywordClick={handleKeywordClick} />
-            </p>
-          </div>
-        ))}
-        {nodeChatLoading && (
-          <div className="ns-description-loading">
-            <span>Rispondendo...</span>
-          </div>
-        )}
+      <div className="ns-section-body ns-chat-section">
+        <Chat adapter={nodeChatAdapter} className="chat--embedded" />
       </div>
     ),
   };
 
   return (
-    <NodeSidebar
-      sections={[aiDescriptionSection, chatSection]}
-      footer={
-        <NodeChatInput
-          nodeLabel={nodeLabel}
-          onSend={sendNodeChatMessage}
-          loading={nodeChatLoading}
-        />
-      }
-    />
+    <NodeSidebar sections={[aiDescriptionSection, chatSection]} />
   );
 }

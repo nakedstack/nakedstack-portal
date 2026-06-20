@@ -14,13 +14,14 @@ export async function POST(request: NextRequest) {
     const question: string = body.question?.trim();
     const language: Language = body.language || 'it';
     const detailLevel: DetailLevel = body.detailLevel || 'base';
+    const context: string = typeof body.context === 'string' ? body.context : '';
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
     }
 
     const client = getDeepSeekClient();
-    const systemPrompt = buildChatSystemPrompt(language, detailLevel);
+    const systemPrompt = buildChatSystemPrompt(language, detailLevel, context);
 
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: systemPrompt },
