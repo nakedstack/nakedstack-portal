@@ -16,9 +16,6 @@ import {
 } from '@xyflow/react';
 import type { ConceptEdgeData } from './types';
 
-/** ID univoco del marker freccia */
-const ARROW_ID = 'concept-edge-arrow';
-
 /** Dimensioni fallback nodo (larghezza × altezza) */
 const FALLBACK_W = 180;
 const FALLBACK_H = 72;
@@ -112,25 +109,6 @@ function ConceptEdge({
         }
       `}</style>
 
-      {/* Marker freccia SVG — definito una sola volta nel DOM */}
-      <defs>
-        <marker
-          id={ARROW_ID}
-          viewBox="0 -5 10 10"
-          refX={8}
-          refY={0}
-          markerWidth={6}
-          markerHeight={6}
-          orient="auto-start-reverse"
-        >
-          <path
-            d="M0,-5L10,0L0,5"
-            fill={strokeColor}
-            style={{ transition: 'fill 0.15s' }}
-          />
-        </marker>
-      </defs>
-
       {/* Area di interazione invisibile (più larga per facilitare click/hover) */}
       <path
         d={edgePath}
@@ -142,11 +120,10 @@ function ConceptEdge({
         style={{ cursor: 'pointer' }}
       />
 
-      {/* Arco visibile */}
+      {/* Arco visibile (senza freccia) */}
       <BaseEdge
         id={id}
         path={edgePath}
-        markerEnd={`url(#${ARROW_ID})`}
         style={{
           stroke: strokeColor,
           strokeWidth,
@@ -154,6 +131,24 @@ function ConceptEdge({
           transition: 'stroke 0.15s, stroke-width 0.15s',
           ...(isAnimated && isHighlighted ? { animation: 'concept-edge-dash-move 0.6s linear infinite' } : {}),
         }}
+      />
+
+      {/* Pallino source */}
+      <circle
+        cx={srcEndpoint.x}
+        cy={srcEndpoint.y}
+        r={4}
+        fill={isActive ? nodeColor : baseColor}
+        style={{ transition: 'fill 0.15s' }}
+      />
+
+      {/* Pallino target */}
+      <circle
+        cx={tgtEndpoint.x}
+        cy={tgtEndpoint.y}
+        r={4}
+        fill={isActive ? nodeColor : baseColor}
+        style={{ transition: 'fill 0.15s' }}
       />
 
       {/* Etichetta della relazione */}
