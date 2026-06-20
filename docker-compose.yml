@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nakedstack
+      POSTGRES_PASSWORD: nakedstack
+      POSTGRES_DB: nakedstack
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  nakedstack:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://nakedstack:nakedstack@postgres:5432/nakedstack
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  pgdata:

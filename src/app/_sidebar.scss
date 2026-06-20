@@ -1,0 +1,201 @@
+// ============================================
+// Sidebar — DigitalOcean Style
+// ============================================
+@use 'variables' as *;
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: $sidebar-width;
+  height: 100vh;
+  background: #FFFFFF;
+  border-right: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: transform $transition-speed;
+  overflow-y: auto;
+  box-shadow: $shadow-sm;
+
+  &__logo {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid $border-light;
+
+    .logo-text {
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: $do-navy;
+      letter-spacing: -0.3px;
+
+      span {
+        color: $do-blue;
+      }
+    }
+  }
+
+  &__nav {
+    padding: 0.75rem 0;
+    flex: 1;
+  }
+
+  &__new-topic {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: calc(100% - 1.5rem);
+    margin: 0 0.75rem 0.75rem;
+    padding: 0.55rem 0.85rem;
+    background: $do-blue;
+    color: #fff;
+    border: none;
+    border-radius: $border-radius-lg;
+    font-family: $font-sans;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background $transition-speed;
+
+    &:hover {
+      background: $do-blue-dark;
+    }
+
+    &-icon {
+      font-size: 1.15rem;
+      font-weight: 400;
+      line-height: 1;
+    }
+  }
+
+  &__section-title {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: $text-muted;
+    font-weight: 700;
+    margin-top: 0.25rem;
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 1.25rem;
+    margin: 0 0.5rem;
+    color: $text-secondary;
+    font-size: 0.88rem;
+    border-radius: $border-radius;
+    transition: all $transition-speed;
+
+    .nav-icon {
+      font-size: 1rem;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    &:hover {
+      background: $do-blue-50;
+      color: $do-blue;
+      text-decoration: none;
+    }
+
+    &--active {
+      background: $do-blue-light;
+      color: $do-blue;
+      font-weight: 600;
+
+      &:hover {
+        background: $do-blue-light;
+        color: $do-blue-dark;
+      }
+    }
+  }
+
+  &__topic-row {
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin: 0 0.5rem;
+
+    .sidebar__link {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.15rem;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      font-family: $font-sans;
+      padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+      color: $text-secondary;
+      font-size: 0.85rem;
+      border-radius: $border-radius;
+      transition: all $transition-speed;
+
+      &:hover {
+        background: $do-blue-50;
+        color: $do-blue;
+        text-decoration: none;
+      }
+    }
+
+    .sidebar__topic-title {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 180px;
+      font-weight: 500;
+      color: $text-primary;
+    }
+
+    .sidebar__topic-date {
+      font-size: 0.68rem;
+      color: $text-muted;
+    }
+  }
+
+  &__footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid $border-light;
+    font-size: 0.75rem;
+    color: $text-muted;
+  }
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: $bp-tablet) {
+  .sidebar {
+    transform: translateX(-100%);
+
+    &--open {
+      transform: translateX(0);
+    }
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 27, 78, 0.4);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity $transition-speed;
+
+    &--visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+

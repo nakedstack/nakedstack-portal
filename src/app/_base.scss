@@ -1,0 +1,356 @@
+// ============================================
+// Reset & Base — DigitalOcean Style
+// ============================================
+@use 'variables' as *;
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  scroll-padding-top: $header-height;
+}
+
+body {
+  font-family: $font-sans;
+  background: $bg-secondary;
+  color: $text-primary;
+  line-height: 1.7;
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: $text-link;
+  text-decoration: none;
+  transition: color $transition-speed;
+
+  &:hover {
+    color: $do-blue-dark;
+    text-decoration: underline;
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 0.75rem;
+  color: $do-navy;
+}
+
+h1 { font-size: 2.25rem; letter-spacing: -0.5px; }
+h2 { font-size: 1.75rem; letter-spacing: -0.3px; }
+h3 { font-size: 1.35rem; }
+h4 { font-size: 1.15rem; }
+
+p { margin-bottom: 1rem; color: $text-secondary; }
+
+strong { color: $text-primary; }
+
+ul, ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+li { margin-bottom: 0.4rem; color: $text-secondary; }
+
+code {
+  font-family: $font-mono;
+  background: $bg-code-inline;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: #E01E5A;
+  border: 1px solid $border-light;
+}
+
+pre {
+  background: $bg-code;
+  border: 1px solid #2D2D3F;
+  border-radius: $border-radius;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+  font-size: 0.88rem;
+  line-height: 1.7;
+
+  code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #E2E8F0;
+    font-size: inherit;
+  }
+}
+
+img {
+  max-width: 100%;
+  border-radius: $border-radius;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid $border-color;
+  margin: 2rem 0;
+}
+
+::selection {
+  background: rgba($do-blue, 0.2);
+  color: $do-navy;
+}
+
+// ============================================
+// Scrollbar
+// ============================================
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $border-color;
+  border-radius: 4px;
+
+  &:hover {
+    background: $text-muted;
+  }
+}
+
+// ============================================
+// Home CTA
+// ============================================
+.home-cta-section {
+  position: relative;
+  overflow: hidden;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-bottom: -2.5rem;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba($do-blue, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 30%, rgba($do-purple, 0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+}
+
+.home-cta {
+  position: relative;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba($do-navy, 0.025);
+  border-top: 1px solid rgba($do-blue, 0.1);
+  border-bottom: 1px solid rgba($do-blue, 0.1);
+
+  &__badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba($do-blue, 0.12), rgba($do-purple, 0.12));
+    border: 1px solid rgba($do-blue, 0.18);
+    color: $do-blue;
+    font-family: $font-sans;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.35rem 0.85rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+  }
+
+  &__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: $do-navy;
+    margin-bottom: 0.85rem;
+    line-height: 1.3;
+    letter-spacing: -0.3px;
+
+    em {
+      font-style: normal;
+      background: linear-gradient(135deg, $do-blue, $do-purple);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  }
+
+  &__desc {
+    color: $text-muted;
+    max-width: 520px;
+    margin: 0 auto 1.75rem;
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: $do-blue;
+    color: #fff;
+    font-family: $font-sans;
+    font-weight: 600;
+    font-size: 1.05rem;
+    padding: 0.85rem 2.25rem;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 14px rgba($do-blue, 0.3);
+
+    &:hover {
+      background: $do-blue-dark;
+      text-decoration: none;
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba($do-blue, 0.4);
+    }
+  }
+
+  &__examples {
+    margin-top: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    color: $text-muted;
+
+    span {
+      color: $text-muted;
+      margin-right: 0.25rem;
+    }
+
+    button {
+      background: none;
+      border: 1px solid $border-color;
+      color: $text-secondary;
+      font-family: $font-sans;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+
+      &:hover {
+        border-color: $do-blue;
+        color: $do-blue;
+        background: rgba($do-blue, 0.04);
+      }
+    }
+  }
+}
+
+// ============================================
+// Context Menu — Design System
+// ============================================
+.ctx-menu-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.ctx-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: $border-radius;
+  color: $text-muted;
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity $transition-speed, background $transition-speed, color $transition-speed;
+
+  &:hover {
+    background: $border-light;
+    color: $text-primary;
+  }
+}
+
+// Show trigger on row hover
+.sidebar__topic-row:hover .ctx-menu-trigger,
+.sidebar__topic-row:focus-within .ctx-menu-trigger,
+.ctx-menu-trigger[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.ctx-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 200;
+  min-width: 160px;
+  background: $bg-primary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-lg;
+  padding: 0.35rem;
+  animation: ctxMenuIn 0.12s ease-out;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    color: $text-primary;
+    font-family: $font-sans;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background $transition-speed;
+
+    &:hover {
+      background: $do-blue-50;
+    }
+
+    &--danger {
+      color: $do-red;
+
+      &:hover {
+        background: $do-red-light;
+      }
+    }
+  }
+
+  &__icon {
+    font-size: 0.9rem;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes ctxMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

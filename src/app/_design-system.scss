@@ -1,0 +1,122 @@
+// ============================================
+// Design System — Showcase Page Styles
+// ============================================
+@use 'variables' as *;
+
+.ds-page {
+  max-width: 1000px;
+
+  h2 {
+    margin-top: 3rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid $do-blue;
+    display: inline-block;
+  }
+
+  h3 {
+    margin-top: 2rem;
+    color: $text-secondary;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+}
+
+// Swatch
+.ds-swatch {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0.5rem 1rem 0;
+
+  &__color {
+    width: 64px;
+    height: 64px;
+    border-radius: $border-radius;
+    border: 1px solid $border-color;
+    box-shadow: $shadow-sm;
+  }
+
+  &__label {
+    font-size: 0.7rem;
+    font-family: $font-mono;
+    color: $text-muted;
+    text-align: center;
+
+    strong {
+      display: block;
+      font-family: $font-sans;
+      font-size: 0.72rem;
+      color: $text-secondary;
+    }
+  }
+}
+
+// Token row
+.ds-tokens {
+  margin-bottom: 2rem;
+}
+
+.ds-token-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid $border-light;
+  font-size: 0.85rem;
+
+  &:first-child {
+    border-top: 1px solid $border-light;
+  }
+}
+
+.ds-token-preview {
+  width: 100px;
+  flex-shrink: 0;
+  text-align: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: $border-radius;
+  font-family: $font-mono;
+  font-size: 0.75rem;
+}
+
+.ds-token-name {
+  font-family: $font-mono;
+  font-size: 0.78rem;
+  color: $do-blue;
+  min-width: 180px;
+}
+
+.ds-token-value {
+  font-family: $font-mono;
+  font-size: 0.78rem;
+  color: $text-muted;
+  flex: 1;
+}
+
+// Component demo
+.ds-demo {
+  background: $bg-card;
+  border: 1px dashed $border-color;
+  border-radius: $border-radius-lg;
+  padding: 2rem;
+  margin: 1rem 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+// Typography specimen
+.ds-type-specimen {
+  margin-bottom: 1.5rem;
+
+  .specimen-label {
+    font-size: 0.72rem;
+    color: $text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+  }
+}
