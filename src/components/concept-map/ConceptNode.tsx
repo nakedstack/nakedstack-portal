@@ -85,11 +85,15 @@ function ConceptNode({ data, selected }: NodeProps) {
         </div>
       </div>
 
-      {/* Handles invisibili — necessari a React Flow per gli edge */}
-      <Handle type="target" position={Position.Top} id="target-top" style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="source" position={Position.Right} id="source-right" style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="source" position={Position.Bottom} id="source-bottom" style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="target" position={Position.Left} id="target-left" style={{ opacity: 0, pointerEvents: 'none' }} />
+      {/* Handles invisibili — 2 per direzione (source + target) per auto-routing */}
+      <Handle type="target" position={Position.Top} id="t-top" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="source" position={Position.Top} id="s-top" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="target" position={Position.Right} id="t-right" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="source" position={Position.Right} id="s-right" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="target" position={Position.Bottom} id="t-bottom" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="source" position={Position.Bottom} id="s-bottom" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="target" position={Position.Left} id="t-left" style={{ visibility: 'hidden', width: 1, height: 1 }} />
+      <Handle type="source" position={Position.Left} id="s-left" style={{ visibility: 'hidden', width: 1, height: 1 }} />
     </div>
   );
 }

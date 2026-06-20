@@ -6,7 +6,6 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import type { Node, Edge } from '@xyflow/react';
-import { Position } from '@xyflow/react';
 import type { RawGraphNode, RawGraphEdge, ConceptMapPayload, ConceptNodeData, ConceptEdgeData, ConceptMapTheme, LayoutStrategy, LayoutOptions, ConceptMapConfig } from './types';
 
 export interface UseConceptMapOptions {
@@ -60,8 +59,6 @@ function buildFlowElements(
     type: 'conceptEdge',
     source: e.source,
     target: e.target,
-    sourceHandle: `source-${Position.Bottom}`,
-    targetHandle: `target-${Position.Top}`,
     data: {
       relation: e.relation,
       edgeColor: theme.edgeColor,

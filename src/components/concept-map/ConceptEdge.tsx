@@ -9,35 +9,78 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  Position,
+  useStore,
   type EdgeProps,
+  type ReactFlowState,
 } from '@xyflow/react';
 import type { ConceptEdgeData } from './types';
 
-/** ID univoco del marker freccia (condiviso tra tutte le istanze edge) */
+/** ID univoco del marker freccia */
 const ARROW_ID = 'concept-edge-arrow';
+
+/** Dimensioni fallback nodo (larghezza × altezza) */
+const FALLBACK_W = 180;
+const FALLBACK_H = 72;
+
+/** Determina il lato migliore e calcola le coordinate esatte sul bordo */
+function getEdgeEndpoint(
+  nodeX: number,
+  nodeY: number,
+  nodeW: number,
+  nodeH: number,
+  otherX: number,
+  otherY: number,
+): { x: number; y: number; pos: Position } {
+  const dx = otherX - nodeX;
+  const dy = otherY - nodeY;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0) {
+      return { x: nodeX + nodeW, y: nodeY + nodeH / 2, pos: Position.Right };
+    }
+    return { x: nodeX, y: nodeY + nodeH / 2, pos: Position.Left };
+  }
+  if (dy > 0) {
+    return { x: nodeX + nodeW / 2, y: nodeY + nodeH, pos: Position.Bottom };
+  }
+  return { x: nodeX + nodeW / 2, y: nodeY, pos: Position.Top };
+}
 
 function ConceptEdge({
   id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  data,
+  source,
+  target,
   selected,
+  data,
 }: EdgeProps) {
   const [hovered, setHovered] = useState(false);
 
+  // Legge le posizioni reali dei nodi connessi (si aggiornano al drag)
+  const sourceNode = useStore((s: ReactFlowState) => s.nodeLookup.get(source));
+  const targetNode = useStore((s: ReactFlowState) => s.nodeLookup.get(target));
+
+  const sx = sourceNode?.position.x ?? 0;
+  const sy = sourceNode?.position.y ?? 0;
+  const sw = sourceNode?.measured?.width ?? FALLBACK_W;
+  const sh = sourceNode?.measured?.height ?? FALLBACK_H;
+  const tx = targetNode?.position.x ?? 0;
+  const ty = targetNode?.position.y ?? 0;
+  const tw = targetNode?.measured?.width ?? FALLBACK_W;
+  const th = targetNode?.measured?.height ?? FALLBACK_H;
+
+  const srcEndpoint = getEdgeEndpoint(sx, sy, sw, sh, tx, ty);
+  const tgtEndpoint = getEdgeEndpoint(tx, ty, tw, th, sx, sy);
+
   const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
+    sourceX: srcEndpoint.x,
+    sourceY: srcEndpoint.y,
+    sourcePosition: srcEndpoint.pos,
+    targetX: tgtEndpoint.x,
+    targetY: tgtEndpoint.y,
+    targetPosition: tgtEndpoint.pos,
     borderRadius: 8,
-    offset: 10,
+    offset: 0,
   });
 
   const edgeData = data as ConceptEdgeData | undefined;
