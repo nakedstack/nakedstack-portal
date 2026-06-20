@@ -112,20 +112,32 @@ hr {
 // Scrollbar
 // ============================================
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: $bg-secondary;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: $border-color;
-  border-radius: 4px;
+  background: #B0BAC9;
+  border-radius: 99px;
+  transition: background $transition-speed;
 
   &:hover {
-    background: $text-muted;
+    background: #8895AD;
   }
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+// Firefox
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #B0BAC9 transparent;
 }
 
 // ============================================
