@@ -21,6 +21,12 @@ export interface ConceptMapPayload {
   topic: string;
   nodes: RawGraphNode[];
   edges: RawGraphEdge[];
+  /**
+   * Posizioni salvate dei nodi (nodeId → {x, y}).
+   * Se presenti, sovrascrivono il layout automatico.
+   * Popolate dopo che l'utente ha spostato i nodi manualmente.
+   */
+  positions?: Record<string, { x: number; y: number }>;
 }
 
 /** Categoria di un nodo (group) */

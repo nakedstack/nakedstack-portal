@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import type { ParsedResponse } from '@/lib/ai/parser';
 import type { Language, DetailLevel } from '@/lib/ai/prompts';
+import type { ConceptMapPayload } from '@/components/concept-map/types';
 
 // ---- Connection ----
 
@@ -28,6 +29,16 @@ async function ensureSchema(): Promise<void> {
       );
 
       CREATE INDEX IF NOT EXISTS idx_topics_created_at ON topics(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS concept_maps (
+        hash TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        language TEXT NOT NULL,
+        payload JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_concept_maps_created_at ON concept_maps(created_at DESC);
     `);
     initialized = true;
   } finally {
@@ -131,4 +142,49 @@ export async function updateTopicChat(id: string, chatHistory: ChatEntry[]): Pro
     'UPDATE topics SET chat_history = $1::jsonb WHERE id = $2',
     [JSON.stringify(chatHistory), id]
   );
+}
+
+// ============================================================
+// Concept Map — Queries (SRP: separate dal CRUD topics)
+// ============================================================
+
+export async function getConceptMap(hash: string): Promise<ConceptMapPayload | null> {
+  await ensureSchema();
+  const { rows } = await pool.query(
+    'SELECT payload FROM concept_maps WHERE hash = $1',
+    [hash]
+  );
+  if (rows.length === 0) return null;
+  return rows[0].payload as ConceptMapPayload;
+}
+
+export async function saveConceptMap(
+  hash: string,
+  topic: string,
+  language: string,
+  payload: ConceptMapPayload,
+): Promise<void> {
+  await ensureSchema();
+  await pool.query(
+    `INSERT INTO concept_maps (hash, topic, language, payload)
+     VALUES ($1, $2, $3, $4::jsonb)
+     ON CONFLICT (hash) DO UPDATE SET
+       payload = EXCLUDED.payload,
+       created_at = NOW()`,
+    [hash, topic, language, JSON.stringify(payload)]
+  );
+}
+
+export async function deleteConceptMap(hash: string): Promise<void> {
+  await ensureSchema();
+  await pool.query('DELETE FROM concept_maps WHERE hash = $1', [hash]);
+}
+
+export async function conceptMapExists(hash: string): Promise<boolean> {
+  await ensureSchema();
+  const { rows } = await pool.query(
+    'SELECT 1 FROM concept_maps WHERE hash = $1 LIMIT 1',
+    [hash]
+  );
+  return rows.length > 0;
 }

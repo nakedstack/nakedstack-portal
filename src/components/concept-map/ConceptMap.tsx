@@ -54,7 +54,7 @@ export default function ConceptMap() {
 
   const topic = results?.text.slice(0, 100) ?? null;
 
-  const { loading, error, graphNodes, graphEdges, fetchMap, reset } = useConceptMap({
+  const { loading, error, graphNodes, graphEdges, fetchMap, reset, savePositions } = useConceptMap({
     topic,
     language: 'it',
     config,
@@ -189,6 +189,15 @@ export default function ConceptMap() {
     }
   }, []);
 
+  // Persiste le posizioni dopo il drag dei nodi
+  const handleNodeDragStop = useCallback((_event: React.MouseEvent, _node: Node, allNodes: Node[]) => {
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const n of allNodes) {
+      positions[n.id] = { x: n.position.x, y: n.position.y };
+    }
+    savePositions(positions);
+  }, [savePositions]);
+
   // Fullscreen: toggle e gestione tasto Escape
   const enterFullscreen = useCallback(() => setIsFullscreen(true), []);
   const exitFullscreen = useCallback(() => setIsFullscreen(false), []);
@@ -277,6 +286,7 @@ export default function ConceptMap() {
               onNodeMouseEnter={handleNodeEnter}
               onNodeMouseLeave={handleNodeLeave}
               onSelectionChange={handleSelectionChange}
+              onNodeDragStop={handleNodeDragStop}
               proOptions={{ hideAttribution: true }}
             >
               <AutoFitView trigger={`${isFullscreen}-${nodes.length}`} />
