@@ -32,9 +32,9 @@ function ConceptNode({ data, selected }: NodeProps) {
         maxWidth: 180,
         background: '#FFFFFF',
         borderRadius: 10,
-        border: `1.5px solid ${isActive ? '#0069FF' : borderColor}`,
+        border: `1.5px solid ${isActive ? color : borderColor}`,
         boxShadow: isActive
-          ? '0 2px 12px rgba(0,105,255,0.15)'
+          ? `0 2px 12px ${color}30`
           : '0 1px 3px rgba(0,0,0,0.06)',
         overflow: 'hidden',
         transition: 'border-color 0.15s, box-shadow 0.15s',
