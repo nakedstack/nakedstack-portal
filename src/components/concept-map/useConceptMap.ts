@@ -139,7 +139,7 @@ export function useConceptMap({ topic, language = 'it', config }: UseConceptMapO
       rawData.edges,
       config.theme,
       config.layout,
-      { width: 800, height: 500 },
+      { width: 800, height: 500, radius: 180, clusterRadius: 120 },
       rawData.positions,
     );
   }, [rawData, config]);

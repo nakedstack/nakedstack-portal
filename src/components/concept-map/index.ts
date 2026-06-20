@@ -7,7 +7,7 @@ export { ConceptMapProvider, useConceptMapConfig } from './ConceptMapProvider';
 export { useConceptMap } from './useConceptMap';
 export { default as AutoFitView } from './AutoFitView';
 export { defaultTheme, registerTheme, getTheme, listThemes } from './themes';
-export { dagreLayout, registerLayout, getLayout, listLayouts } from './layouts';
+export { dagreLayout, radialLayout, registerLayout, getLayout, listLayouts } from './layouts';
 export type {
   RawGraphNode,
   RawGraphEdge,

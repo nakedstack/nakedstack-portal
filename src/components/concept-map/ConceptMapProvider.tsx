@@ -13,7 +13,7 @@ interface ConceptMapProviderProps {
   children: ReactNode;
   /** Tema opzionale (id o istanza). Default: 'default' */
   theme?: string | ConceptMapTheme;
-  /** Layout opzionale (id o istanza). Default: 'dagre' */
+  /** Layout opzionale (id o istanza). Default: 'radial' */
   layout?: string | LayoutStrategy;
 }
 

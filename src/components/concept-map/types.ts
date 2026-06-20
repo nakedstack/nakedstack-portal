@@ -101,6 +101,10 @@ export interface LayoutOptions {
   nodeSep?: number;
   /** Spaziatura verticale tra rank */
   rankSep?: number;
+  /** Raggio dal centro per nodi di primo livello (layout radiale) */
+  radius?: number;
+  /** Raggio per cluster di sotto-nodi (layout radiale) */
+  clusterRadius?: number;
 }
 
 /** Contratto per un algoritmo di layout */

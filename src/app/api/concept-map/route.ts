@@ -46,9 +46,10 @@ export async function POST(request: NextRequest) {
 
 Regole:
 - Il nodo centrale deve avere id "${topic.replace(/\s+/g, '-').toLowerCase()}" e rappresentare il concetto principale
-- Crea tra 8 e 16 nodi totali
-- Usa group per categorizzare (es: "concetto", "tecnologia", "vantaggio", "svantaggio", "correlato")
+- Crea tra 8 e 16 nodi totali, con una struttura a stella: nodo centrale → nodi di primo livello → eventuali sotto-nodi
+- Usa group per categorizzare (es: "concetto", "tecnologia", "vantaggio", "svantaggio", "correlato", "componente", "principio")
 - Ogni nodo deve essere connesso ad almeno un altro nodo
+- IMPORTANTE: per ogni arco, il campo "relation" DEVE essere un verbo o una breve frase che descrive la relazione (es: "include", "genera", "richiede", "è un tipo di", "si basa su", "produce", "implementa", "è composto da", "dipende da", "è parte di", "utilizza", "estende"). NON usare relazioni generiche come "collegato a".
 - Usa id semplici, in lowercase, senza spazi (usa trattini)
 - NON includere spiegazioni, solo JSON puro.`;
 
