@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useNav } from '@/lib/nav-context';
 import { getTopics, deleteTopic, type SavedTopic } from '@/lib/storage';
 import ContextMenu from '@/components/ContextMenu';
@@ -10,6 +10,8 @@ import { Plus, DotsThreeVertical, ArrowSquareOut, PencilSimple, Trash } from '@p
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTopicId = searchParams.get('topic');
   const { sidebarOpen: open, setSidebarOpen: setOpen } = useNav();
   const [topics, setTopics] = useState<SavedTopic[]>([]);
 
@@ -119,7 +121,7 @@ export default function Sidebar() {
                   {group.items.map((t) => (
                     <div key={t.id} className="sidebar__topic-row">
                       <button
-                        className={`sidebar__link${pathname === '/studio' ? ' sidebar__link--active' : ''}`}
+                        className={`sidebar__link${t.id === activeTopicId ? ' sidebar__link--active' : ''}`}
                         onClick={() => handleTopicClick(t.id)}
                       >
                         <span className="sidebar__topic-title">{t.title}</span>

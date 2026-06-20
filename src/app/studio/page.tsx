@@ -13,7 +13,7 @@ import ExportButtons from '@/components/ExportButtons';
 import { ConceptMap, ConceptMapProvider } from '@/components/concept-map';
 
 export default function StudioPage() {
-  const { results, isLoading, error, search, loadTopic, clearAll } = useExplore();
+  const { results, isLoading, error, query, search, loadTopic, clearAll } = useExplore();
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topic');
 
@@ -55,6 +55,9 @@ export default function StudioPage() {
 
       {results && !isLoading && (
         <>
+          {topicId && query && (
+            <h1 className="explore__topic-title explore__topic-title--page">{query}</h1>
+          )}
           <ExportButtons />
           <SearchResults />
           <ConceptMapProvider>

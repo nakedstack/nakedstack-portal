@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
@@ -22,9 +23,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <NavProvider>
-      {!isHome && <Sidebar />}
+      {!isHome && <Suspense fallback={null}><Sidebar /></Suspense>}
       <main className={`main-content${isHome ? ' main-content--full' : ''}`}>
-        <HeaderBar title={pageTitle} />
+        {!isStudio && <HeaderBar title={pageTitle} />}
         <div className="content">
           {children}
         </div>
