@@ -14,9 +14,13 @@ interface Props {
   onInsertAfter: BlockComponentProps['onInsertAfter'];
   onConvertType: BlockComponentProps['onConvertType'];
   readOnly?: boolean;
+  /** Listener dnd-kit da applicare SOLO sul drag handle */
+  dragListeners?: Record<string, unknown>;
+  /** Ref callback dnd-kit per il nodo attivatore del drag */
+  setDragActivatorRef?: (node: HTMLElement | null) => void;
 }
 
-export function BlockRow({ block, onUpdate, onDelete, onInsertAfter, onConvertType, readOnly }: Props) {
+export function BlockRow({ block, onUpdate, onDelete, onInsertAfter, onConvertType, readOnly, dragListeners, setDragActivatorRef }: Props) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
   const rowRef = useRef<HTMLDivElement>(null);
@@ -61,6 +65,7 @@ export function BlockRow({ block, onUpdate, onDelete, onInsertAfter, onConvertTy
     <div
       ref={rowRef}
       className="block-row"
+      data-block-id={block.id}
       onKeyDownCapture={handleKeyDownCapture}
     >
       {!readOnly && (
@@ -68,6 +73,8 @@ export function BlockRow({ block, onUpdate, onDelete, onInsertAfter, onConvertTy
           onDelete={() => onDelete(block.id)}
           onInsertAfter={() => onInsertAfter(block.id, 'paragraph')}
           onConvert={(type) => onConvertType(block.id, type)}
+          dragListeners={dragListeners}
+          setDragActivatorRef={setDragActivatorRef}
         />
       )}
       <div className="block-row__content" ref={el => { blockRef.current = el; }}>

@@ -11,6 +11,7 @@ function rowToPage(row: Record<string, unknown>): Page {
     is_favorite: row.is_favorite as boolean,
     createdAt: new Date(row.created_at as string).getTime(),
     updatedAt: new Date(row.updated_at as string).getTime(),
+    deletedAt: row.deleted_at ? new Date(row.deleted_at as string).getTime() : null,
   };
 }
 
@@ -31,7 +32,7 @@ function buildTree(pages: Page[]): PageTreeNode[] {
 
 export async function getPages(): Promise<Page[]> {
   const { rows } = await getPool().query(
-    `SELECT * FROM pages ORDER BY created_at ASC`,
+    `SELECT * FROM pages WHERE deleted_at IS NULL ORDER BY created_at ASC`,
   );
   return rows.map(rowToPage);
 }
@@ -43,7 +44,7 @@ export async function getPageTree(): Promise<PageTreeNode[]> {
 
 export async function getPage(id: string): Promise<Page | null> {
   const { rows } = await getPool().query(
-    `SELECT * FROM pages WHERE id = $1`,
+    `SELECT * FROM pages WHERE id = $1 AND deleted_at IS NULL`,
     [id],
   );
   return rows.length > 0 ? rowToPage(rows[0]) : null;
@@ -53,11 +54,12 @@ export async function getPage(id: string): Promise<Page | null> {
 export async function getPageAncestors(id: string): Promise<Page[]> {
   const { rows } = await getPool().query(
     `WITH RECURSIVE ancestors AS (
-       SELECT *, 0 AS depth FROM pages WHERE id = $1
+       SELECT *, 0 AS depth FROM pages WHERE id = $1 AND deleted_at IS NULL
        UNION ALL
        SELECT p.*, a.depth + 1
        FROM pages p
        JOIN ancestors a ON p.id = a.parent_id
+       WHERE p.deleted_at IS NULL
      )
      SELECT * FROM ancestors WHERE id <> $1 ORDER BY depth DESC`,
     [id],
@@ -109,7 +111,39 @@ export async function updatePage(
   return rowToPage(rows[0]);
 }
 
+/** Soft-delete: marca la pagina e tutti i discendenti come eliminati. */
 export async function deletePage(id: string): Promise<void> {
+  await getPool().query(
+    `WITH RECURSIVE subtree AS (
+       SELECT id FROM pages WHERE id = $1
+       UNION ALL
+       SELECT p.id FROM pages p JOIN subtree s ON p.parent_id = s.id
+     )
+     UPDATE pages SET deleted_at = now(), updated_at = now()
+     WHERE id IN (SELECT id FROM subtree)`,
+    [id],
+  );
+}
+
+/** Restituisce le pagine nel cestino, ordinate per data di eliminazione. */
+export async function getDeletedPages(): Promise<Page[]> {
+  const { rows } = await getPool().query(
+    `SELECT * FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`,
+  );
+  return rows.map(rowToPage);
+}
+
+/** Ripristina una singola pagina (non i figli - rimangono nel cestino). */
+export async function restorePage(id: string): Promise<Page> {
+  const { rows } = await getPool().query(
+    `UPDATE pages SET deleted_at = NULL, updated_at = now() WHERE id = $1 RETURNING *`,
+    [id],
+  );
+  return rowToPage(rows[0]);
+}
+
+/** Eliminazione definitiva: rimuove la pagina e i figli dal DB. */
+export async function permanentDeletePage(id: string): Promise<void> {
   await getPool().query(`DELETE FROM pages WHERE id = $1`, [id]);
 }
 

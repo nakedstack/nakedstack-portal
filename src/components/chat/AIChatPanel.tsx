@@ -16,6 +16,7 @@ const ACTION_LABELS: Record<AIAction, string> = {
   generate: 'Genera',
   append: 'Aggiungi',
   rewrite: 'Riscrivi',
+  rewrite_selection: 'Selezione',
 };
 
 /**
@@ -62,7 +63,9 @@ export function AIChatPanel({ adapter, onClose }: Props) {
       {/* Action mode selector */}
       {setAction && (
         <div className="ai-chat-panel__actions-bar" role="group" aria-label="Modalità AI">
-          {(Object.keys(ACTION_LABELS) as AIAction[]).map(action => (
+          {(Object.keys(ACTION_LABELS) as AIAction[])
+        .filter(a => a !== 'rewrite_selection') // azione interna, non selezionabile dall'utente
+        .map(action => (
             <button
               key={action}
               className={`ai-action-btn${currentAction === action ? ' ai-action-btn--active' : ''}`}

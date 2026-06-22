@@ -12,6 +12,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const { sidebarWidth } = useNav();
   const isHome = pathname === '/';
   const isPages = pathname.startsWith('/pages');
+  // Le pagine editor e il cestino gestiscono il proprio layout interno
+  const isFullEditor = isPages || pathname === '/trash';
 
   return (
     <>
@@ -21,9 +23,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         style={!isHome ? { marginLeft: sidebarWidth } : undefined}
       >
         {!isPages && !isHome && <HeaderBar title="nakedstack" />}
-        <div className="content">
-          {children}
-        </div>
+        {isFullEditor ? children : <div className="content">{children}</div>}
       </main>
     </>
   );

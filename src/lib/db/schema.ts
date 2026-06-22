@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import { getPool } from './connection';
 
 const EXPECTED_TABLES: Record<string, string[]> = {
-  pages: ['id', 'title', 'parent_id', 'icon', 'cover', 'is_favorite', 'created_at', 'updated_at'],
+  pages: ['id', 'title', 'parent_id', 'icon', 'cover', 'is_favorite', 'created_at', 'updated_at', 'deleted_at'],
   blocks: ['id', 'page_id', 'parent_block_id', 'type', 'content', 'position', 'created_at', 'updated_at'],
   concept_maps: ['id', 'topic_id', 'language', 'version', 'payload', 'created_at'],
 };
@@ -33,6 +33,20 @@ export async function initSchema(): Promise<void> {
   const pool = getPool();
   const client = await pool.connect();
   try {
+    // Migrazioni additive (ADD COLUMN IF NOT EXISTS): non perdono dati esistenti
+    await client.query(`
+      DO $$ BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.tables WHERE table_name = 'pages'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'pages' AND column_name = 'deleted_at'
+        ) THEN
+          ALTER TABLE pages ADD COLUMN deleted_at TIMESTAMPTZ DEFAULT NULL;
+        END IF;
+      END $$;
+    `);
+
     for (const tableName of Object.keys(EXPECTED_TABLES)) {
       await dropTableIfSchemaMismatch(client, tableName);
     }
@@ -45,6 +59,7 @@ export async function initSchema(): Promise<void> {
         icon        TEXT,
         cover       TEXT,
         is_favorite BOOLEAN     NOT NULL DEFAULT false,
+        deleted_at  TIMESTAMPTZ DEFAULT NULL,
         created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
       );

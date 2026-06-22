@@ -161,11 +161,35 @@ export type PromptBuilder = (
   currentBlocks: Block[],
 ) => string;
 
+/** Prompt per riscrivere il testo selezionato inline — restituisce inlineResult invece di blockOps */
+export function buildRewriteSelectionPrompt(language: Language, detailLevel: DetailLevel, pageTitle: string): string {
+  return `${baseInstructions(language, detailLevel)}
+
+CONTESTO PAGINA: "${pageTitle}"
+
+L'utente ti fornisce un testo selezionato e vuole che tu lo rielabori.
+Rispondi con questo JSON:
+{
+  "reply": "<messaggio breve all'utente, max 10 parole>",
+  "inlineResult": "<testo rielaborato>",
+  "blockOps": []
+}
+
+Regole per inlineResult:
+- Contieni SOLO il testo rielaborato, senza commenti o prefissi
+- Stessa lingua del testo originale
+- Non usare virgolette attorno al risultato
+- Non usare markdown a meno che il testo originale non lo usasse
+- Mantieni la lunghezza simile all'originale (±30%)`;
+}
+
 export const AI_ACTION_HANDLERS: Record<string, PromptBuilder> = {
   chat: buildChatOnlyPrompt,
   generate: buildGeneratePrompt,
   append: buildAppendPrompt,
   rewrite: buildRewritePrompt,
+  // rewrite_selection usa buildRewriteSelectionPrompt che ha firma diversa (nessun currentBlocks)
+  rewrite_selection: (lang, detail, pageTitle) => buildRewriteSelectionPrompt(lang, detail, pageTitle),
 };
 
 // ─── Response parser ──────────────────────────────────────────────────────────
@@ -184,15 +208,16 @@ function extractJSON(raw: string): string {
 export function parseAIBlockResponse(raw: string): AIPageResponse {
   try {
     const json = extractJSON(raw);
-    const parsed = JSON.parse(json) as { reply?: string; blockOps?: AIBlockOp[] };
+    const parsed = JSON.parse(json) as { reply?: string; blockOps?: AIBlockOp[]; inlineResult?: string };
     const blockOps: AIBlockOp[] = Array.isArray(parsed.blockOps) ? parsed.blockOps : [];
     return {
       reply: typeof parsed.reply === 'string' ? parsed.reply : raw,
       blockOps,
       hasBlockChanges: blockOps.length > 0 && blockOps.some(op => op.blocks.length > 0),
+      inlineResult: typeof parsed.inlineResult === 'string' ? parsed.inlineResult : undefined,
     };
   } catch {
-    // Fallback: treat entire response as a chat reply with no block changes
+    // Fallback: tratta l'intera risposta come reply testuale senza modifiche ai blocchi
     return { reply: raw, blockOps: [], hasBlockChanges: false };
   }
 }

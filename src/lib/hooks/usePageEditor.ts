@@ -19,8 +19,15 @@ export function usePageEditor(pageId: string) {
     let cancelled = false;
     setLoading(true);
     fetchPageWithBlocks(pageId)
-      .then(({ page, blocks }) => {
-        if (!cancelled) { setPage(page); setBlocks(blocks); setError(null); }
+      .then(async ({ page: p, blocks: fetched }) => {
+        if (cancelled) return;
+        // Garantisce sempre almeno un blocco paragrafo per nuove pagine vuote
+        let initialBlocks = fetched;
+        if (fetched.length === 0) {
+          const first = await apiCreateBlock({ page_id: pageId, type: 'paragraph', position: 0 });
+          initialBlocks = cancelled ? [] : [first];
+        }
+        if (!cancelled) { setPage(p); setBlocks(initialBlocks); setError(null); }
       })
       .catch(() => { if (!cancelled) setError('Failed to load page'); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -60,9 +67,19 @@ export function usePageEditor(pageId: string) {
   }, [blocks, pageId]);
 
   const deleteBlock = useCallback(async (id: string) => {
-    setBlocks(prev => prev.filter(b => b.id !== id));
+    let wasLast = false;
+    setBlocks(prev => {
+      const next = prev.filter(b => b.id !== id);
+      wasLast = next.length === 0;
+      return next;
+    });
     await apiDeleteBlock(id);
-  }, []);
+    // Se era l'ultimo blocco, ricrea un paragrafo vuoto come segnaposto
+    if (wasLast) {
+      const first = await apiCreateBlock({ page_id: pageId, type: 'paragraph', position: 0 });
+      setBlocks([first]);
+    }
+  }, [pageId]);
 
   const updateTitle = useCallback(async (title: string) => {
     if (!page) return;

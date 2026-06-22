@@ -55,3 +55,20 @@ export async function apiToggleFavorite(id: string): Promise<Page> {
   if (!res.ok) throw new Error('Failed to toggle favorite');
   return res.json() as Promise<Page>;
 }
+
+export async function fetchDeletedPages(): Promise<Page[]> {
+  const res = await fetch('/api/pages/trash');
+  if (!res.ok) throw new Error('Failed to fetch deleted pages');
+  return res.json() as Promise<Page[]>;
+}
+
+export async function apiRestorePage(id: string): Promise<Page> {
+  const res = await fetch(`/api/pages/${id}/restore`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to restore page');
+  return res.json() as Promise<Page>;
+}
+
+export async function apiPermanentDeletePage(id: string): Promise<void> {
+  const res = await fetch(`/api/pages/${id}/permanent`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to permanently delete page');
+}

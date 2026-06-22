@@ -1,0 +1,122 @@
+@use 'variables' as *;
+
+// ====================================
+// Modal condiviso (ConfirmModal, ecc.)
+// ====================================
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 27, 78, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+  animation: modal-fade-in 0.15s ease;
+}
+
+.modal {
+  background: #fff;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-xl;
+  width: 100%;
+  max-width: 420px;
+  margin: 1rem;
+  animation: modal-slide-in 0.15s ease;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.25rem 0;
+  }
+
+  &__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a2540;
+    margin: 0;
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #9aa3b8;
+    border-radius: $border-radius;
+    cursor: pointer;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: #f0f2f5;
+      color: #1a2540;
+    }
+  }
+
+  &__message {
+    padding: 0.75rem 1.25rem 0;
+    font-size: 0.875rem;
+    color: #4a5568;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1.25rem;
+  }
+
+  &__btn {
+    padding: 0.45rem 1rem;
+    border-radius: $border-radius;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background $transition-speed, border-color $transition-speed;
+
+    &--cancel {
+      background: #f0f2f5;
+      color: #4a5568;
+      border-color: #e2e6ed;
+
+      &:hover {
+        background: #e2e6ed;
+      }
+    }
+
+    &--confirm {
+      background: $do-blue;
+      color: #fff;
+
+      &:hover {
+        background: $do-blue-dark;
+      }
+    }
+
+    &--danger {
+      background: #d63b3b;
+
+      &:hover {
+        background: #b83232;
+      }
+    }
+  }
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modal-slide-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}

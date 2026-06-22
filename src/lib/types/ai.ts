@@ -4,10 +4,11 @@ import type { BlockType, BlockContent } from './pages';
 
 /** What the user wants the AI to do on the page */
 export type AIAction =
-  | 'chat'     // Pure conversation — no block changes
-  | 'generate' // Generate blocks from scratch and append
-  | 'append'   // Append new blocks derived from a request
-  | 'rewrite'; // Replace all existing blocks
+  | 'chat'              // Solo conversazione — nessuna modifica ai blocchi
+  | 'generate'          // Genera blocchi da zero e li aggiunge
+  | 'append'            // Aggiunge blocchi derivati dalla richiesta
+  | 'rewrite'           // Sostituisce tutto il contenuto esistente
+  | 'rewrite_selection'; // Riscrive il testo selezionato inline
 
 // ─── Block operations ─────────────────────────────────────────────────────────
 
@@ -27,11 +28,13 @@ export interface AIBlockOp {
   afterId?: string;
 }
 
-/** Full response from the AI page endpoint */
+/** Risposta completa dall'endpoint AI della pagina */
 export interface AIPageResponse {
   reply: string;
   blockOps: AIBlockOp[];
   hasBlockChanges: boolean;
+  /** Solo per action 'rewrite_selection': testo rielaborato da inserire nel blocco */
+  inlineResult?: string;
 }
 
 // ─── IBlockWriter — Dependency Inversion (D of SOLID) ─────────────────────────

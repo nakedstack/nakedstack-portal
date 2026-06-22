@@ -67,6 +67,7 @@ export interface Page {
   is_favorite: boolean;
   createdAt: number;
   updatedAt: number;
+  deletedAt: number | null;
 }
 
 export interface PageTreeNode extends Page {

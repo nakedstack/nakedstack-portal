@@ -27,15 +27,26 @@ interface SortableBlockProps extends Omit<React.ComponentProps<typeof BlockRow>,
 }
 
 function SortableBlock({ block, ...rest }: SortableBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef,
+    transform, transition, isDragging,
+  } = useSortable({ id: block.id });
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  // Non spostiamo i listeners sull'intera riga — solo sull'handle
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <BlockRow block={block} {...rest} />
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <BlockRow
+        block={block}
+        {...rest}
+        dragListeners={listeners}
+        setDragActivatorRef={setActivatorNodeRef}
+      />
     </div>
   );
 }

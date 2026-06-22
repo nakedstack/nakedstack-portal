@@ -39,7 +39,7 @@ export function ParagraphBlock({ block, onUpdate, onDelete, onInsertAfter, readO
       suppressContentEditableWarning
       onInput={handleInput}
       onKeyDown={handleKeyDown}
-      data-placeholder="Type '/' for commands…"
+      data-placeholder="Scrivi qualcosa, o premi '/' per i comandi…"
       data-block-id={block.id}
     />
   );

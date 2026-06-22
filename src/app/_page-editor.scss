@@ -6,10 +6,24 @@
 // ── Editor shell ──────────────────────────────────────────────────────────────
 
 .page-editor {
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 3rem 2rem 6rem;
+  padding: 2.5rem 3rem 8rem;
   min-height: 100vh;
+  position: relative;
+  background: $bg-primary;
+  color-scheme: light;
+
+  // Quando la pagina è vuota: flex column per spingere i suggerimenti in fondo
+  &--empty {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__spacer {
+    flex: 1;
+    min-height: 2rem;
+  }
 
   &__loading,
   &__error {
@@ -49,6 +63,62 @@
 
     &:hover {
       color: $text-secondary;
+    }
+  }
+}
+
+// ── Suggerimenti pagina vuota ─────────────────────────────────────────────────
+
+.empty-page-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: $text-muted;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__pills {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  &__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    background: $bg-primary;
+    border: 1px solid $border-color;
+    border-radius: 999px;
+    color: $text-secondary;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background $transition-speed, border-color $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+      border-color: #c0c8d8;
+      color: $text-primary;
+    }
+
+    // Pill AI leggermente evidenziata
+    &--ai {
+      background: $do-blue-light;
+      border-color: rgba($do-blue, 0.3);
+      color: $do-blue;
+
+      &:hover {
+        background: #d0e4ff;
+        border-color: rgba($do-blue, 0.5);
+      }
     }
   }
 }
@@ -329,6 +399,7 @@
   background: transparent;
   font-family: $font-sans;
   color: $text-primary;
+  caret-color: $text-primary;
   line-height: 1.7;
   padding: 0.2rem 0;
   word-break: break-word;

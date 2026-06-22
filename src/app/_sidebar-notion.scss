@@ -397,15 +397,13 @@
   }
 
   &__menu {
-    position: absolute;
-    top: calc(100% + 2px);
-    right: 0;
-    z-index: 200;
+    // La posizione (fixed) è gestita inline nel componente per evitare
+    // il clipping da parte dell'overflow del sidebar
     background: #fff;
     border: 1px solid $border-color;
     border-radius: $border-radius-lg;
     box-shadow: $shadow-lg;
-    min-width: 160px;
+    min-width: 168px;
     padding: 0.25rem;
     display: flex;
     flex-direction: column;
@@ -464,10 +462,13 @@
   height: 100%;
   cursor: col-resize;
   z-index: 110;
+  // Non intercetta gli eventi del mouse finché non è in hover/drag
+  pointer-events: none;
   transition: background $transition-speed;
 
   &:hover,
   &:active {
+    pointer-events: auto;
     background: $do-blue;
     opacity: 0.4;
   }

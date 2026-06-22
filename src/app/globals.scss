@@ -11,6 +11,8 @@
 @use 'node-sidebar';
 @use 'page-editor';
 @use 'ai-chat-panel';
+@use 'modal';
+@use 'trash-page';
 
 // Shader background
 .shader-bg {

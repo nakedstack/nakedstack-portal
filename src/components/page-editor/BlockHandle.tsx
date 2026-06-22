@@ -9,11 +9,15 @@ interface Props {
   onDelete: () => void;
   onInsertAfter: () => void;
   onConvert: (type: BlockType) => void;
+  /** Listener dnd-kit — applicati solo sul bottone ⠿ */
+  dragListeners?: Record<string, unknown>;
+  /** Ref callback dnd-kit per il nodo attivatore drag */
+  setDragActivatorRef?: (node: HTMLElement | null) => void;
 }
 
 const CONVERT_OPTIONS = Object.keys(BLOCK_REGISTRY) as BlockType[];
 
-export function BlockHandle({ onDelete, onInsertAfter, onConvert }: Props) {
+export function BlockHandle({ onDelete, onInsertAfter, onConvert, dragListeners, setDragActivatorRef }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,10 +26,13 @@ export function BlockHandle({ onDelete, onInsertAfter, onConvert }: Props) {
       <button className="block-handle__btn" onClick={onInsertAfter} title="Add block below">
         <Plus size={14} />
       </button>
+      {/* Drag handle — listeners solo su questo bottone */}
       <button
+        ref={setDragActivatorRef}
         className="block-handle__btn block-handle__btn--drag"
-        title="Options"
+        title="Trascina per spostare / clic per opzioni"
         onClick={() => setMenuOpen(v => !v)}
+        {...(dragListeners as Record<string, React.EventHandler<React.SyntheticEvent>>)}
       >
         <DotsSixVertical size={14} />
       </button>
