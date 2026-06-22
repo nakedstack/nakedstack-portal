@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import type { Language, DetailLevel } from '@/lib/ai/prompts';
 import type { ParsedResponse } from '@/lib/ai/parser';
 import { stripRestatedQuestion } from '@/lib/ai/response-cleaner';
@@ -34,6 +34,8 @@ interface ExploreState {
   savedTopics: SavedTopic[];
   /** Incrementato quando l'enrichment agent modifica la concept map (trigger refetch) */
   conceptMapRefreshNonce: number;
+  /** Incrementato quando un keyword click apre la chat (trigger auto-open ChatDock) */
+  chatOpenNonce: number;
   /** Diff (vecchio -> nuovo) dell'ultimo arricchimento del testo, per la review evidenziata */
   enrichmentDiff: DiffSegment[] | null;
 }
@@ -42,6 +44,8 @@ interface ExploreContextType extends ExploreState {
   search: (query: string) => Promise<void>;
   exploreKeyword: (term: string) => Promise<void>;
   sendChatMessage: (message: string) => Promise<string | null>;
+  /** Registra la funzione send dell'adapter attivo (usata da exploreKeyword per delegare) */
+  registerAdapterSend: (fn: ((msg: string) => Promise<void>) | null) => void;
   /** Applica l'output dell'enrichment agent allo stato locale (no re-persist) */
   applyEnrichment: (payload: { text?: string; conceptMapChanged?: boolean }) => void;
   /** Nasconde la review evidenziata delle modifiche dell'agent */
@@ -72,6 +76,7 @@ const defaultState: ExploreState = {
   currentTopicId: null,
   savedTopics: [],
   conceptMapRefreshNonce: 0,
+  chatOpenNonce: 0,
   enrichmentDiff: null,
 };
 
@@ -80,6 +85,7 @@ const ExploreContext = createContext<ExploreContextType>({
   search: async () => {},
   exploreKeyword: async () => {},
   sendChatMessage: async () => null,
+  registerAdapterSend: () => {},
   applyEnrichment: () => {},
   clearEnrichmentDiff: () => {},
   goBackTo: () => {},
@@ -95,6 +101,14 @@ const ExploreContext = createContext<ExploreContextType>({
 
 export function ExploreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ExploreState>(defaultState);
+
+  // Ref all'adapter send attivo: permette a exploreKeyword di delegare
+  // al pipeline completo (chat + arricchimento + banner) senza duplicare logica.
+  const adapterSendRef = useRef<((msg: string) => Promise<void>) | null>(null);
+
+  const registerAdapterSend = useCallback((fn: ((msg: string) => Promise<void>) | null) => {
+    adapterSendRef.current = fn;
+  }, []);
 
   // Auto-detect language from browser
   useEffect(() => {
@@ -229,73 +243,13 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
   }, [state.language]);
 
   const exploreKeyword = useCallback(async (term: string) => {
-    // Se il termine e gia nella breadcrumb, torna a quel livello
-    const existingIndex = state.breadcrumbs.findIndex(b => b.term === term);
-    if (existingIndex >= 0) {
-      const item = state.breadcrumbs[existingIndex];
-      setState(prev => ({
-        ...prev,
-        query: item.query,
-        results: item.response,
-        breadcrumbs: prev.breadcrumbs.slice(0, existingIndex + 1),
-        chatHistory: [],
-        suggestions: [],
-        enrichmentDiff: null,
-      }));
-      return;
+    // Apre il ChatDock e delega al pipeline completo dell'adapter
+    // (sendChatMessage + useChatEnrichment + banner isEnriching).
+    setState(prev => ({ ...prev, chatOpenNonce: prev.chatOpenNonce + 1 }));
+    if (adapterSendRef.current) {
+      await adapterSendRef.current(`Approfondisci: ${term}`);
     }
-
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const res = await fetch('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: term,
-          language: state.language,
-          detailLevel: state.detailLevel,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Search failed');
-      }
-
-      const data: ParsedResponse = await res.json();
-
-      // Pulisci anche qui
-      const exCleanedText = stripRestatedQuestion(data.text, term);
-      const exCleaned: ParsedResponse = { ...data, text: exCleanedText };
-
-      const breadcrumbItem: BreadcrumbItem = {
-        term,
-        query: term,
-        response: exCleaned,
-      };
-
-      setState(prev => ({
-        ...prev,
-        query: term,
-        results: exCleaned,
-        breadcrumbs: [...prev.breadcrumbs, breadcrumbItem],
-        chatHistory: [],
-        suggestions: [],
-        isLoading: false,
-        enrichmentDiff: null,
-      }));
-
-      fetchSuggestions(term, exCleanedText);
-
-    } catch (err) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      }));
-    }
-  }, [state.language, state.detailLevel, state.breadcrumbs, fetchSuggestions]);
+  }, []);
 
   const sendChatMessage = useCallback(async (message: string): Promise<string | null> => {
     const newEntry: ChatEntry = { role: 'user', content: message };
@@ -498,6 +452,7 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
         search,
         exploreKeyword,
         sendChatMessage,
+        registerAdapterSend,
         applyEnrichment,
         clearEnrichmentDiff,
         goBackTo,

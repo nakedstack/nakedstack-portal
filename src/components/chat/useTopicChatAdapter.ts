@@ -7,13 +7,13 @@
 
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useExplore } from '@/lib/explore-context';
 import { useChatEnrichment } from './useChatEnrichment';
 import type { ChatAdapter } from './types';
 
 export function useTopicChatAdapter(): ChatAdapter {
-  const { results, chatHistory, chatIsLoading, sendChatMessage } = useExplore();
+  const { results, chatHistory, chatIsLoading, sendChatMessage, registerAdapterSend } = useExplore();
   const { isEnriching, enrich } = useChatEnrichment();
 
   const send = useCallback(async (message: string) => {
@@ -22,6 +22,13 @@ export function useTopicChatAdapter(): ChatAdapter {
       void enrich(message, answer, null);
     }
   }, [sendChatMessage, enrich]);
+
+  // Registra send nel context così exploreKeyword può delegare
+  // al pipeline completo (chat + arricchimento + banner isEnriching).
+  useEffect(() => {
+    registerAdapterSend(send);
+    return () => registerAdapterSend(null);
+  }, [send, registerAdapterSend]);
 
   const onKeywordClick = useCallback((term: string) => {
     void send(`Approfondisci "${term}"`);

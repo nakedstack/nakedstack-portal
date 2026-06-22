@@ -43,6 +43,10 @@ export default function Sidebar() {
   const handleDelete = async (id: string) => {
     await deleteTopic(id);
     loadTopics();
+    // Se l'utente sta guardando l'argomento eliminato, lo porta alla nuova chat
+    if (id === activeTopicId) {
+      router.push('/studio');
+    }
   };
 
   const handleRename = async (id: string) => {

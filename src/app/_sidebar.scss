@@ -145,6 +145,19 @@
       }
     }
 
+    .sidebar__link--active {
+      background: $do-blue-light;
+
+      .sidebar__topic-title {
+        color: $do-blue;
+        font-weight: 600;
+      }
+
+      &:hover {
+        background: $do-blue-50;
+      }
+    }
+
     .sidebar__topic-title {
       display: block;
       overflow: hidden;

@@ -206,6 +206,8 @@ export async function saveTopic(topic: {
 
 export async function deleteTopic(id: string): Promise<void> {
   await ensureSchema();
+  // Elimina prima le concept_maps (cascada su node_descriptions e node_chats via FK ON DELETE CASCADE)
+  await pool.query('DELETE FROM concept_maps WHERE topic_id = $1', [id]);
   await pool.query('DELETE FROM topics WHERE id = $1', [id]);
 }
 

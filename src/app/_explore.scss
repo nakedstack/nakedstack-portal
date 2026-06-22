@@ -340,7 +340,7 @@
   border: 1px solid #E2E6ED;
   border-radius: 10px;
   position: sticky;
-  top: calc(#{$header-height} + 8px);
+  top: 8px;
   z-index: 5;
 }
 
@@ -947,9 +947,9 @@
 // Guscio flottante per la chat del topic (Studio) — drawer fisso a destra
 .chat-dock {
   position: fixed;
-  top: $header-height;
+  top: 0;
   right: 0;
-  height: calc(100vh - #{$header-height});
+  height: 100vh;
   width: 380px;
   z-index: 90;
   display: flex;

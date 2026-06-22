@@ -4,9 +4,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useExplore } from '@/lib/explore-context';
 import SearchInput from '@/components/SearchInput';
-import BreadcrumbTrail from '@/components/BreadcrumbTrail';
 import SearchResults from '@/components/SearchResults';
-import DetailCard from '@/components/DetailCard';
 import SuggestionsBar from '@/components/SuggestionsBar';
 import { ChatDock } from '@/components/chat';
 import ExportButtons from '@/components/ExportButtons';
@@ -45,8 +43,6 @@ export default function StudioPage() {
         </div>
       )}
 
-      <BreadcrumbTrail />
-
       {error && (
         <div className="explore__error">
           <p>{error}</p>
@@ -79,8 +75,6 @@ export default function StudioPage() {
           </div>
         </div>
       )}
-
-      <DetailCard />
     </div>
   );
 }

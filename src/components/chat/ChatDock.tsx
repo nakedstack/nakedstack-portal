@@ -7,17 +7,22 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useExplore } from '@/lib/explore-context';
 import { ChatCircle, X } from '@phosphor-icons/react';
 import Chat from './Chat';
 import { useTopicChatAdapter } from './useTopicChatAdapter';
 
 export default function ChatDock() {
-  const { results, chatHistory, currentTopicId } = useExplore();
+  const { results, chatHistory, chatOpenNonce, currentTopicId } = useExplore();
   const adapter = useTopicChatAdapter();
   const [isOpen, setIsOpen] = useState(false);
   const [seenTopicId, setSeenTopicId] = useState(currentTopicId);
+
+  // Auto-apri quando un keyword viene esplorato via chat
+  useEffect(() => {
+    if (chatOpenNonce > 0) setIsOpen(true);
+  }, [chatOpenNonce]);
 
   // Chiudi al cambio di topic (adeguamento dello stato durante il render)
   if (currentTopicId !== seenTopicId) {
