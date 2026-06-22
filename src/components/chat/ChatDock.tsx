@@ -1,41 +1,27 @@
-// ============================================================
-// ChatDock — Guscio flottante per la chat del topic (Studio)
-// ------------------------------------------------------------
-// Contenitore: bottone toggle + pannello. All'interno usa il
-// componente <Chat> condiviso, identico a quello della sidebar.
-// ============================================================
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useExplore } from '@/lib/explore-context';
+import { useState } from 'react';
 import { ChatCircle, X } from '@phosphor-icons/react';
 import Chat from './Chat';
-import { useTopicChatAdapter } from './useTopicChatAdapter';
+import { usePageChatAdapter } from './usePageChatAdapter';
 
-export default function ChatDock() {
-  const { results, chatHistory, chatOpenNonce, currentTopicId } = useExplore();
-  const adapter = useTopicChatAdapter();
+interface Props {
+  pageId?: string;
+  pageTitle?: string;
+}
+
+function ChatDockInner({ pageId, pageTitle }: Required<Props>) {
+  const adapter = usePageChatAdapter({ pageId, pageTitle });
+  return <Chat adapter={adapter} />;
+}
+
+export default function ChatDock({ pageId, pageTitle }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [seenTopicId, setSeenTopicId] = useState(currentTopicId);
 
-  // Auto-apri quando un keyword viene esplorato via chat
-  useEffect(() => {
-    if (chatOpenNonce > 0) setIsOpen(true);
-  }, [chatOpenNonce]);
-
-  // Chiudi al cambio di topic (adeguamento dello stato durante il render)
-  if (currentTopicId !== seenTopicId) {
-    setSeenTopicId(currentTopicId);
-    setIsOpen(false);
-  }
-
-  if (!results) return null;
-
-  const assistantCount = chatHistory.filter(m => m.role === 'assistant').length;
+  if (!pageId) return null;
 
   return (
-    <div className={`chat-dock${isOpen ? ' chat-dock--open' : ''}`}>
+    <div className={`chat-dock`}>
       <button
         className="chat-dock__toggle"
         onClick={() => setIsOpen(v => !v)}
@@ -43,17 +29,19 @@ export default function ChatDock() {
         aria-expanded={isOpen}
       >
         {isOpen ? <X size={16} weight="bold" /> : <ChatCircle size={20} weight="duotone" />}
-        {!isOpen && assistantCount > 0 && (
-          <span className="chat-dock__badge">{assistantCount}</span>
-        )}
       </button>
 
-      <div className="chat-dock__body">
-        <div className="chat-dock__header">
-          <span className="chat-dock__title">Chat</span>
+      {isOpen && (
+        <div className="chat-dock__panel">
+          <div className="chat-dock__header">
+            <span>{pageTitle ?? 'Chat'}</span>
+            <button onClick={() => setIsOpen(false)} aria-label="Chiudi"><X size={14} /></button>
+          </div>
+          <div className="chat-dock__body">
+            <ChatDockInner pageId={pageId} pageTitle={pageTitle ?? ''} />
+          </div>
         </div>
-        <Chat adapter={adapter} />
-      </div>
+      )}
     </div>
   );
 }

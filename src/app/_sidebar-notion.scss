@@ -1,0 +1,474 @@
+// ============================================
+// Sidebar Notion-style — Page tree, search, resize
+// ============================================
+@use 'variables' as *;
+
+// ── Sidebar shell ─────────────────────────────────────────────────────────────
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  min-width: 180px;
+  max-width: 480px;
+  background: $bg-secondary;
+  border-right: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  transition: transform $transition-speed;
+  user-select: none;
+
+  &--closed {
+    transform: translateX(-100%);
+
+    @media (min-width: $bp-mobile) {
+      transform: none;
+    }
+  }
+
+  &__nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.5rem 0;
+
+    // Thin scrollbar
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: $border-color; border-radius: 2px; }
+  }
+
+  &__section {
+    margin-bottom: 0.5rem;
+  }
+
+  &__section-title {
+    padding: 0.4rem 1rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: $text-muted;
+    font-weight: 700;
+  }
+
+  &__loading,
+  &__empty {
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+    color: $text-muted;
+  }
+
+  &__bottom {
+    padding: 0.5rem 0.5rem 0.75rem;
+    border-top: 1px solid $border-color;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  &__new-page,
+  &__trash {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    font-family: $font-sans;
+    font-size: 0.83rem;
+    color: $text-muted;
+    cursor: pointer;
+    text-align: left;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $border-light;
+      color: $text-primary;
+    }
+  }
+}
+
+.sidebar-overlay {
+  display: none;
+
+  @media (max-width: $bp-mobile) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 27, 78, 0.3);
+    z-index: 99;
+  }
+}
+
+// ── Workspace header ──────────────────────────────────────────────────────────
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid $border-color;
+  min-height: 52px;
+
+  &__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: $do-blue;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: -0.5px;
+  }
+
+  &__name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: $text-primary;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// ── Sidebar search ────────────────────────────────────────────────────────────
+
+.sidebar-search {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid $border-color;
+
+  &__trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.35rem 0.65rem;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: $border-radius;
+    font-family: $font-sans;
+    font-size: 0.82rem;
+    color: $text-muted;
+    cursor: pointer;
+    text-align: left;
+    transition: background $transition-speed, border-color $transition-speed;
+
+    &:hover {
+      background: $border-light;
+      color: $text-secondary;
+    }
+  }
+
+  &__overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 27, 78, 0.4);
+    z-index: 400;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10vh;
+  }
+
+  &__modal {
+    background: #fff;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-xl;
+    width: 520px;
+    max-width: calc(100vw - 2rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 70vh;
+  }
+
+  &__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid $border-color;
+  }
+
+  &__input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: $font-sans;
+    font-size: 1rem;
+    color: $text-primary;
+    background: transparent;
+
+    &::placeholder {
+      color: $text-muted;
+    }
+  }
+
+  &__results {
+    overflow-y: auto;
+    max-height: 50vh;
+  }
+
+  &__empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: $text-muted;
+    font-size: 0.85rem;
+  }
+
+  &__result {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: $text-secondary;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background $transition-speed;
+
+    &:hover {
+      background: $do-blue-50;
+      color: $text-primary;
+    }
+
+    span:first-child {
+      font-size: 1rem;
+      min-width: 1.2rem;
+    }
+  }
+}
+
+// ── Page tree item ────────────────────────────────────────────────────────────
+
+.page-tree-item {
+  display: flex;
+  flex-direction: column;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    border-radius: $border-radius;
+    margin: 0.05rem 0.4rem;
+    min-height: 30px;
+    transition: background $transition-speed;
+    position: relative;
+
+    &:hover {
+      background: $border-light;
+
+      .page-tree-item__actions {
+        opacity: 1;
+      }
+    }
+
+    &--active {
+      background: $do-blue-light;
+
+      .page-tree-item__main,
+      .page-tree-item__title {
+        color: $do-blue;
+        font-weight: 600;
+      }
+
+      &:hover {
+        background: $do-blue-light;
+      }
+    }
+  }
+
+  &__expand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    color: $text-muted;
+    cursor: pointer;
+    padding: 0;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $border-color;
+      color: $text-primary;
+    }
+
+    &--hidden {
+      pointer-events: none;
+      opacity: 0;
+    }
+  }
+
+  &__main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: none;
+    padding: 0.25rem 0.3rem 0.25rem 0;
+    min-width: 0;
+    cursor: pointer;
+    font-family: $font-sans;
+    font-size: 0.83rem;
+    color: $text-secondary;
+    text-align: left;
+    border-radius: $border-radius;
+  }
+
+  &__icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    color: $text-muted;
+    min-width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__rename {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: $font-sans;
+    font-size: 0.83rem;
+    color: $text-primary;
+    border-bottom: 1px solid $do-blue;
+    padding: 0;
+    min-width: 0;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    opacity: 0;
+    transition: opacity $transition-speed;
+    flex-shrink: 0;
+    padding-right: 0.2rem;
+  }
+
+  &__action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    color: $text-muted;
+    cursor: pointer;
+    padding: 0;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $border-color;
+      color: $text-primary;
+    }
+  }
+
+  &__menu {
+    position: absolute;
+    top: calc(100% + 2px);
+    right: 0;
+    z-index: 200;
+    background: #fff;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+    min-width: 160px;
+    padding: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  &__menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    font-family: $font-sans;
+    font-size: 0.82rem;
+    color: $text-secondary;
+    cursor: pointer;
+    text-align: left;
+    transition: background $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+      color: $text-primary;
+    }
+
+    &--danger {
+      color: $do-red;
+
+      &:hover {
+        background: $do-red-light;
+        color: $do-red;
+      }
+    }
+  }
+
+  &__menu-divider {
+    height: 1px;
+    background: $border-light;
+    margin: 0.2rem 0;
+  }
+
+  &__children {
+    // indentation handled via inline paddingLeft
+  }
+}
+
+// ── Sidebar resize handle ─────────────────────────────────────────────────────
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 110;
+  transition: background $transition-speed;
+
+  &:hover,
+  &:active {
+    background: $do-blue;
+    opacity: 0.4;
+  }
+}

@@ -397,7 +397,7 @@ nicolay   5678  0.3  3.1 987654 123456 ?   S    10:25   0:05 code-insiders</code
               }}
             >
               <div style={{ color: '#0069FF', display: 'flex' }}>
-                {IconComponent && <IconComponent size={item.size} weight="duotone" />}
+                {IconComponent && <IconComponent size={item.size} />}
               </div>
               <code style={{ fontSize: '0.68rem', color: '#5B6B86', wordBreak: 'break-all' }}>
                 {item.icon}

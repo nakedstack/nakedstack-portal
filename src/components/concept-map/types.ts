@@ -33,7 +33,7 @@ export interface ConceptMapPayload {
 export type NodeGroup = 'concetto' | 'tecnologia' | 'vantaggio' | 'svantaggio' | 'correlato' | string;
 
 /** Dati iniettati nel custom node di React Flow */
-export interface ConceptNodeData {
+export interface ConceptNodeData extends Record<string, unknown> {
   label: string;
   group: NodeGroup;
   /** Breve descrizione o sottotitolo del nodo */
@@ -44,7 +44,7 @@ export interface ConceptNodeData {
 }
 
 /** Dati iniettati nel custom edge di React Flow */
-export interface ConceptEdgeData {
+export interface ConceptEdgeData extends Record<string, unknown> {
   relation: string;
   edgeColor: string;
   /** Se true, l'edge è evidenziato perché connesso a un nodo hoverato/selezionato */

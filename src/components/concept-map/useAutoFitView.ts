@@ -24,7 +24,7 @@ interface UseAutoFitViewOptions {
  */
 export function useAutoFitView({ trigger, delay = 150, enabled = true }: UseAutoFitViewOptions = {}) {
   const { fitView } = useReactFlow();
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!enabled) return;

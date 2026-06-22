@@ -1,0 +1,576 @@
+// ============================================
+// Page Editor — Notion-style block editor
+// ============================================
+@use 'variables' as *;
+
+// ── Editor shell ──────────────────────────────────────────────────────────────
+
+.page-editor {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem;
+  min-height: 100vh;
+
+  &__loading,
+  &__error {
+    padding: 4rem 2rem;
+    text-align: center;
+    color: $text-muted;
+    font-size: 0.9rem;
+  }
+
+  &__header {
+    margin-bottom: 0.5rem;
+  }
+
+  &__icon {
+    display: block;
+    font-size: 3.5rem;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    width: fit-content;
+    border-radius: $border-radius;
+    padding: 0.1rem 0.2rem;
+    transition: background $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+    }
+  }
+
+  &__empty-hint {
+    color: $text-muted;
+    font-size: 0.88rem;
+    padding: 0.75rem 0;
+    cursor: text;
+    border-radius: $border-radius;
+    transition: color $transition-speed;
+
+    &:hover {
+      color: $text-secondary;
+    }
+  }
+}
+
+// ── Page title ────────────────────────────────────────────────────────────────
+
+.page-title {
+  display: block;
+  width: 100%;
+  font-family: $font-sans;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: $text-primary;
+  line-height: 1.2;
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.5px;
+
+  &[contenteditable]:empty::before {
+    content: 'Untitled';
+    color: $text-muted;
+    pointer-events: none;
+  }
+
+  &[contenteditable]:focus {
+    outline: none;
+  }
+}
+
+// ── Breadcrumb ────────────────────────────────────────────────────────────────
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.8rem;
+  color: $text-muted;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+
+    &--current {
+      color: $text-secondary;
+      font-weight: 500;
+    }
+  }
+
+  &__link {
+    color: $text-muted;
+    text-decoration: none;
+    padding: 0.1rem 0.3rem;
+    border-radius: $border-radius;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+      color: $text-primary;
+      text-decoration: none;
+    }
+  }
+
+  &__sep {
+    color: $border-color;
+    flex-shrink: 0;
+  }
+}
+
+// ── Block list ────────────────────────────────────────────────────────────────
+
+.block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+// ── Block row ─────────────────────────────────────────────────────────────────
+
+.block-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  border-radius: $border-radius;
+  padding: 0.05rem 0;
+  transition: background $transition-speed;
+
+  &:hover {
+    .block-handle {
+      opacity: 1;
+    }
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+// ── Block handle ──────────────────────────────────────────────────────────────
+
+.block-handle {
+  display: flex;
+  align-items: center;
+  gap: 0.05rem;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity $transition-speed;
+  padding-top: 0.25rem;
+  position: relative;
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    color: $text-muted;
+    cursor: pointer;
+    padding: 0;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+      color: $text-primary;
+    }
+
+    &--drag {
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  &__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 200;
+    background: #fff;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+    min-width: 160px;
+    padding: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  &__menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    font-family: $font-sans;
+    font-size: 0.82rem;
+    color: $text-secondary;
+    cursor: pointer;
+    text-align: left;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+      color: $text-primary;
+    }
+
+    &--danger {
+      color: $do-red;
+
+      &:hover {
+        background: $do-red-light;
+        color: $do-red;
+      }
+    }
+  }
+
+  &__menu-divider {
+    height: 1px;
+    background: $border-light;
+    margin: 0.2rem 0;
+  }
+
+  &__menu-label {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: $text-muted;
+  }
+}
+
+// ── Command menu ( / ) ────────────────────────────────────────────────────────
+
+.command-menu {
+  position: absolute;
+  z-index: 300;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 280px;
+  background: #fff;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-xl;
+  overflow: hidden;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    transition: background $transition-speed;
+
+    &--active,
+    &:hover {
+      background: $do-blue-50;
+    }
+  }
+
+  &__icon {
+    font-size: 1.1rem;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $bg-secondary;
+    border-radius: $border-radius;
+    flex-shrink: 0;
+    color: $text-secondary;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: $text-primary;
+  }
+
+  &__desc {
+    font-size: 0.75rem;
+    color: $text-muted;
+  }
+}
+
+// ── Block types ───────────────────────────────────────────────────────────────
+
+// Shared editable content style
+%editable-block {
+  display: block;
+  width: 100%;
+  outline: none;
+  border: none;
+  background: transparent;
+  font-family: $font-sans;
+  color: $text-primary;
+  line-height: 1.7;
+  padding: 0.2rem 0;
+  word-break: break-word;
+
+  &[contenteditable]:empty::before {
+    color: $text-muted;
+    pointer-events: none;
+  }
+}
+
+.block-paragraph {
+  @extend %editable-block;
+  font-size: 0.95rem;
+}
+
+.block-heading {
+  @extend %editable-block;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+
+  &--heading_1 {
+    font-size: 2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.25rem;
+    color: $text-primary;
+  }
+
+  &--heading_2 {
+    font-size: 1.45rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.2rem;
+    color: $text-primary;
+  }
+
+  &--heading_3 {
+    font-size: 1.15rem;
+    margin-top: 1rem;
+    margin-bottom: 0.15rem;
+    color: $text-primary;
+  }
+}
+
+.block-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  padding: 0.1rem 0;
+
+  &__marker {
+    flex-shrink: 0;
+    color: $text-secondary;
+    min-width: 1.2rem;
+    padding-top: 0.05rem;
+    font-size: 0.95rem;
+
+    .block-list-item--bullet & {
+      font-size: 0.6rem;
+      padding-top: 0.55rem;
+    }
+  }
+
+  &__content {
+    @extend %editable-block;
+    flex: 1;
+    padding: 0;
+    font-size: 0.95rem;
+  }
+}
+
+.block-quote {
+  margin: 0.5rem 0;
+  padding: 0.4rem 1rem;
+  border-left: 3px solid $do-blue;
+  background: $do-blue-50;
+  border-radius: 0 $border-radius $border-radius 0;
+
+  [contenteditable] {
+    @extend %editable-block;
+    font-size: 0.95rem;
+    font-style: italic;
+    color: $text-secondary;
+  }
+}
+
+.block-code {
+  position: relative;
+  margin: 0.5rem 0;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+  background: $bg-code;
+  border: 1px solid #2D2D4A;
+
+  &__lang-label {
+    padding: 0.4rem 1rem;
+    font-family: $font-mono;
+    font-size: 0.72rem;
+    color: #8895AD;
+    border-bottom: 1px solid #2D2D4A;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  pre,
+  code,
+  [contenteditable] {
+    display: block;
+    padding: 1rem;
+    font-family: $font-mono;
+    font-size: 0.85rem;
+    color: #E2E6ED;
+    line-height: 1.6;
+    outline: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    white-space: pre;
+    overflow-x: auto;
+  }
+}
+
+.block-divider {
+  border: none;
+  border-top: 2px solid $border-light;
+  margin: 1rem 0;
+}
+
+.block-toggle {
+  margin: 0.2rem 0;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    cursor: pointer;
+  }
+
+  &__arrow {
+    flex-shrink: 0;
+    color: $text-muted;
+    margin-top: 0.35rem;
+    transition: transform $transition-speed;
+
+    &--open {
+      transform: rotate(90deg);
+    }
+  }
+
+  &__content {
+    @extend %editable-block;
+    flex: 1;
+    font-size: 0.95rem;
+  }
+
+  &__children {
+    padding-left: 1.5rem;
+    border-left: 2px solid $border-light;
+    margin-top: 0.25rem;
+  }
+}
+
+.block-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  margin: 0.25rem 0;
+
+  &__icon {
+    font-size: 1.2rem;
+    line-height: 1.7;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    @extend %editable-block;
+    flex: 1;
+    font-size: 0.95rem;
+  }
+}
+
+.block-subpage {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: $border-radius;
+  color: $text-secondary;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background $transition-speed, color $transition-speed;
+  margin: 0.1rem 0;
+
+  &:hover {
+    background: $do-blue-50;
+    color: $do-blue;
+    text-decoration: none;
+  }
+
+  svg {
+    color: $text-muted;
+    flex-shrink: 0;
+  }
+}
+
+.block-image {
+  margin: 0.5rem 0;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+
+  &__img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: $border-radius-lg;
+  }
+
+  &__caption {
+    display: block;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.78rem;
+    color: $text-muted;
+    text-align: center;
+  }
+
+  &--empty {
+    padding: 1.5rem;
+    background: $bg-secondary;
+    border: 1px dashed $border-color;
+    border-radius: $border-radius-lg;
+    text-align: center;
+    color: $text-muted;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &::before {
+      content: '🖼  Add image URL…';
+    }
+  }
+}

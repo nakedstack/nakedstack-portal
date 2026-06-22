@@ -21,7 +21,7 @@ interface AutoFitViewProps {
  */
 export default function AutoFitView({ trigger, delay = 150 }: AutoFitViewProps) {
   const { fitView } = useReactFlow();
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     clearTimeout(timeoutRef.current);

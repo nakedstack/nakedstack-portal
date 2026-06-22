@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.scss";
 import AppShell from "@/components/AppShell";
-import { initSchema } from "@/lib/db";
+import { initSchema } from "@/lib/db/index";
 
 // Inizializza il DB all'avvio
 initSchema();

@@ -6,7 +6,7 @@
 // implementazione senza modificare il componente.
 // ============================================================
 
-import type { ChatEntry } from '@/lib/storage';
+import type { ChatEntry } from '@/lib/types/pages';
 
 export type { ChatEntry };
 

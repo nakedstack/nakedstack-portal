@@ -2,7 +2,6 @@
 
 import { useState, Fragment } from 'react';
 import { Copy, Check } from '@phosphor-icons/react';
-import { useExplore } from '@/lib/explore-context';
 
 // ---- Types ----
 
@@ -100,12 +99,11 @@ export function splitIntoBlocks(text: string): string[] {
 // ---- Internal ----
 
 function KeywordButton({ term, onClick }: { term: string; onClick?: (term: string) => void }) {
-  const { exploreKeyword } = useExplore();
-  const handle = onClick ?? exploreKeyword;
+  if (!onClick) return <span className="keyword-link">{term}</span>;
   return (
     <button
       className="keyword-link"
-      onClick={() => handle(term)}
+      onClick={() => onClick(term)}
       title={`Approfondisci: ${term}`}
     >
       {term}

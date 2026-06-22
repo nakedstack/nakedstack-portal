@@ -18,7 +18,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useExplore } from '@/lib/explore-context';
 import { useConceptMapConfig } from './ConceptMapProvider';
 import { useConceptMap } from './useConceptMap';
 import AutoFitView from './AutoFitView';
@@ -30,11 +29,12 @@ import { NodeSidebarProvider, useNodeSidebar } from './NodeSidebarContext';
 import { useNodeSidebarDerived } from './useNodeSidebar';
 import { useNodeDescription } from './useNodeDescription';
 import NodeSidebar from './NodeSidebar';
-import { Chat, useNodeChatAdapter } from '@/components/chat';
+import { Chat } from '@/components/chat';
+import { usePageChatAdapter } from '@/components/chat/usePageChatAdapter';
 import FormattedText from './FormattedText';
 import type { ConceptNodeData, ConceptEdgeData, RawGraphNode, RawGraphEdge } from './types';
 import type { NodeDetailSection } from './NodeSidebarContext';
-import type { ChatEntry } from '@/lib/storage';
+import type { ChatEntry } from '@/lib/types/pages';
 import type { Language, DetailLevel } from '@/lib/ai/prompts';
 
 // ============================================================
@@ -53,10 +53,17 @@ const DEFAULT_EDGE_TYPES = {
 // ConceptMap — Wrapper: fornisce NodeSidebarProvider (DIP)
 // ============================================================
 
-export default function ConceptMap() {
+export interface ConceptMapProps {
+  topicId: string;
+  topic: string;
+  language?: Language;
+  detailLevel?: DetailLevel;
+}
+
+export default function ConceptMap(props: ConceptMapProps) {
   return (
     <NodeSidebarProvider>
-      <ConceptMapInner />
+      <ConceptMapInner {...props} />
     </NodeSidebarProvider>
   );
 }
@@ -65,10 +72,12 @@ export default function ConceptMap() {
 // ConceptMapInner — Logica interna (SRP: orchestrazione mappa)
 // ============================================================
 
-function ConceptMapInner() {
-  const { results, chatHistory, language, detailLevel, currentTopicId, conceptMapRefreshNonce } = useExplore();
+function ConceptMapInner({ topicId: currentTopicId, topic: topicText, language = 'it', detailLevel = 'base' }: ConceptMapProps) {
   const config = useConceptMapConfig();
   const { openSidebar } = useNodeSidebar();
+
+  const results = topicText ? { text: topicText, keywords: [], relatedTopics: [] } : null;
+  const conceptMapRefreshNonce = 0;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -315,7 +324,8 @@ function ConceptMapInner() {
               onNodeMouseLeave={handleNodeLeave}
               onNodeClick={handleNodeClick}
               onSelectionChange={handleSelectionChange}
-              onNodeDragStop={handleNodeDragStop}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              onNodeDragStop={handleNodeDragStop as any}
               proOptions={{ hideAttribution: true }}
             >
               <AutoFitView trigger={`${isFullscreen}-${nodes.length}`} />
@@ -384,7 +394,7 @@ function ConceptMapInner() {
       <NodeSidebarConnector
         rawNodes={rawData?.nodes ?? []}
         rawEdges={rawData?.edges ?? []}
-        chatHistory={chatHistory}
+        chatHistory={[]}
         language={language}
         detailLevel={detailLevel}
         topic={topic ?? results?.text.slice(0, 80) ?? ''}
@@ -466,16 +476,10 @@ function NodeSidebarConnector({
     chatContext,
   });
 
-  // Chat del nodo: adapter condiviso (contesto nodo + parent + topic, persistente).
-  // Dopo ogni risposta avvia l'agent di arricchimento agganciato a questo nodo.
-  const nodeChatAdapter = useNodeChatAdapter({
-    conceptMapId,
-    nodeId,
-    nodeLabel,
-    nodeGroup: nodeData?.group ?? '',
-    description: description ?? null,
-    parentNodes,
-    topic: topic || '',
+  // Chat del nodo: use page-level chat adapter with node context.
+  const nodeChatAdapter = usePageChatAdapter({
+    pageId: topicId ?? '',
+    pageTitle: nodeLabel ?? 'Node',
   });
 
   // Click su [[termine]] → invia come messaggio nella chat del nodo

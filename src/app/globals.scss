@@ -4,10 +4,12 @@
 @use 'variables';
 @use 'base';
 @use 'sidebar';
+@use 'sidebar-notion';
 @use 'layout';
 @use 'design-system';
 @use 'explore';
 @use 'node-sidebar';
+@use 'page-editor';
 
 // Shader background
 .shader-bg {
