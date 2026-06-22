@@ -7,6 +7,7 @@
 // ============================================================
 
 import type { ChatEntry } from '@/lib/types/pages';
+import type { AIAction, AIBlockOp } from '@/lib/types/ai';
 
 export type { ChatEntry };
 
@@ -25,4 +26,16 @@ export interface ChatAdapter {
   send: (message: string) => void | Promise<void>;
   /** Gestione click su una parola chiave [[termine]] */
   onKeywordClick?: (term: string) => void;
+
+  // ── AI Block Operation extensions (Interface Segregation: optional) ──────────
+  /** Block operations pending user confirmation */
+  pendingOps?: AIBlockOp[];
+  /** Apply the pending block operations to the page */
+  applyOps?: () => void | Promise<void>;
+  /** Discard pending block operations without applying */
+  discardOps?: () => void;
+  /** Currently selected AI action mode */
+  currentAction?: AIAction;
+  /** Change the AI action mode */
+  setAction?: (action: AIAction) => void;
 }

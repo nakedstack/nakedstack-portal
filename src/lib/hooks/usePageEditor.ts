@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchPageWithBlocks, apiUpdatePage } from '@/lib/api/pages-api';
 import { apiCreateBlock, apiUpdateBlock, apiDeleteBlock } from '@/lib/api/blocks-api';
 import type { Block, BlockType, BlockContent, Page } from '@/lib/types/pages';
+import type { BlockDraft, IBlockWriter } from '@/lib/types/ai';
 
 const DEBOUNCE_MS = 500;
 
@@ -69,5 +70,48 @@ export function usePageEditor(pageId: string) {
     await apiUpdatePage(pageId, { title });
   }, [page, pageId]);
 
-  return { page, blocks, loading, error, updateBlockContent, convertBlockType, insertBlockAfter, deleteBlock, updateTitle };
+  // ── Bulk operations (IBlockWriter) ──────────────────────────────────────────
+
+  const insertBlocksBulk = useCallback(async (drafts: BlockDraft[], afterId?: string): Promise<void> => {
+    if (drafts.length === 0) return;
+    const afterBlock = afterId ? blocks.find(b => b.id === afterId) : null;
+    let startPosition = afterBlock ? afterBlock.position + 1 : blocks.length;
+
+    const created: Block[] = [];
+    for (const draft of drafts) {
+      const b = await apiCreateBlock({
+        page_id: pageId,
+        type: draft.type,
+        content: draft.content,
+        position: startPosition++,
+      });
+      created.push(b);
+    }
+    setBlocks(prev => [...prev, ...created].sort((a, b) => a.position - b.position));
+  }, [blocks, pageId]);
+
+  const replaceAllBlocks = useCallback(async (drafts: BlockDraft[]): Promise<void> => {
+    // Delete all existing blocks
+    const toDelete = [...blocks];
+    setBlocks([]);
+    await Promise.all(toDelete.map(b => apiDeleteBlock(b.id).catch(console.error)));
+
+    // Insert new drafts sequentially
+    const created: Block[] = [];
+    for (let i = 0; i < drafts.length; i++) {
+      const b = await apiCreateBlock({
+        page_id: pageId,
+        type: drafts[i].type,
+        content: drafts[i].content,
+        position: i,
+      });
+      created.push(b);
+    }
+    setBlocks(created);
+  }, [blocks, pageId]);
+
+  /** IBlockWriter implementation (D of SOLID) */
+  const blockWriter: IBlockWriter = { insertBlocksBulk, replaceAllBlocks };
+
+  return { page, blocks, loading, error, updateBlockContent, convertBlockType, insertBlockAfter, deleteBlock, updateTitle, insertBlocksBulk, replaceAllBlocks, blockWriter };
 }

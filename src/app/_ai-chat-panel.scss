@@ -1,0 +1,353 @@
+// ============================================
+// AI Chat Panel — docked right sidebar
+// ============================================
+@use 'variables' as *;
+
+// ── Page editor shell — no longer flex-row, panel is fixed ──────────────────
+
+.page-editor-shell {
+  // wrapper kept in case it's needed, but layout handled by fixed panel
+  display: block;
+}
+
+// ── AI FAB — fixed bottom-right ──────────────────────────────────────────────
+
+.ai-fab {
+  position: fixed;
+  bottom: 1.75rem;
+  right: 1.75rem;
+  z-index: 300;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: $do-blue;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: $shadow-xl;
+  transition: background $transition-speed, transform $transition-speed, box-shadow $transition-speed;
+
+  &:hover {
+    background: $do-blue-dark;
+    transform: scale(1.06);
+  }
+
+  &--active {
+    background: $do-navy;
+    transform: scale(1);
+
+    &:hover {
+      background: darken(#031B4E, 5%);
+    }
+  }
+}
+
+// ── AI Chat Panel shell ───────────────────────────────────────────────────────
+
+.ai-chat-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 340px;
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: $shadow-xl;
+  z-index: 250;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid $border-color;
+    background: #fff;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: $text-primary;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+
+    &::before {
+      content: '✦';
+      color: $do-blue;
+      font-size: 0.75rem;
+    }
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: none;
+    border: none;
+    border-radius: $border-radius;
+    color: $text-muted;
+    cursor: pointer;
+    transition: background $transition-speed, color $transition-speed;
+
+    &:hover {
+      background: $bg-secondary;
+      color: $text-primary;
+    }
+  }
+
+  &__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: $border-color; border-radius: 2px; }
+  }
+
+  &__empty {
+    color: $text-muted;
+    font-size: 0.83rem;
+    text-align: center;
+    padding: 1rem 0;
+    line-height: 1.6;
+  }
+
+  &__msg {
+    padding: 0.5rem 0.75rem;
+    border-radius: $border-radius-lg;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    max-width: 100%;
+    word-break: break-word;
+
+    &--user {
+      background: $do-blue;
+      color: #fff;
+      align-self: flex-end;
+      border-radius: $border-radius-lg $border-radius-lg $border-radius $border-radius-lg;
+    }
+
+    &--assistant {
+      background: $bg-secondary;
+      color: $text-primary;
+      align-self: flex-start;
+      border-radius: $border-radius $border-radius-lg $border-radius-lg $border-radius-lg;
+    }
+
+    &--loading {
+      color: $text-muted;
+      font-style: italic;
+      background: $bg-secondary;
+      animation: ai-pulse 1.4s ease-in-out infinite;
+    }
+  }
+
+  &__form {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 0.75rem;
+    border-top: 1px solid $border-color;
+    background: #fff;
+    flex-shrink: 0;
+  }
+
+  &__input {
+    flex: 1;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: 0.45rem 0.75rem;
+    font-family: $font-sans;
+    font-size: 0.85rem;
+    color: $text-primary;
+    outline: none;
+    background: $bg-secondary;
+    transition: border-color $transition-speed;
+
+    &::placeholder { color: $text-muted; }
+    &:focus { border-color: $do-blue; background: #fff; }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
+  }
+
+  &__send {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: $border-radius;
+    background: $do-blue;
+    color: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background $transition-speed;
+
+    &:hover:not(:disabled) { background: $do-blue-dark; }
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+  }
+}
+
+// ── Action mode selector ──────────────────────────────────────────────────────
+
+.ai-chat-panel__actions-bar {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid $border-light;
+  background: $bg-secondary;
+  flex-shrink: 0;
+}
+
+.ai-action-btn {
+  padding: 0.25rem 0.65rem;
+  border: 1px solid $border-color;
+  border-radius: $border-radius;
+  background: #fff;
+  font-family: $font-sans;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: all $transition-speed;
+
+  &:hover {
+    background: $do-blue-50;
+    border-color: $do-blue;
+    color: $do-blue;
+  }
+
+  &--active {
+    background: $do-blue;
+    border-color: $do-blue;
+    color: #fff;
+    font-weight: 600;
+  }
+}
+
+// ── Block preview area ────────────────────────────────────────────────────────
+
+.ai-apply-bar {
+  border-top: 1px solid $border-color;
+  background: $bg-secondary;
+  flex-shrink: 0;
+
+  &__buttons {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid $border-light;
+  }
+}
+
+.block-preview {
+  padding: 0.5rem 0.75rem;
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: $text-muted;
+    margin-bottom: 0.3rem;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    max-height: 140px;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar { width: 3px; }
+    &::-webkit-scrollbar-thumb { background: $border-color; }
+  }
+
+  &__item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  &__type {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: $do-blue;
+    background: $do-blue-50;
+    border-radius: $border-radius;
+    padding: 0.1rem 0.35rem;
+    text-transform: capitalize;
+  }
+
+  &__text {
+    color: $text-secondary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+}
+
+.ai-apply-btn,
+.ai-discard-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: $border-radius;
+  font-family: $font-sans;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all $transition-speed;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ai-apply-btn {
+  background: $do-blue;
+  color: #fff;
+  flex: 1;
+
+  &:hover:not(:disabled) { background: $do-blue-dark; }
+}
+
+.ai-discard-btn {
+  background: $bg-secondary;
+  color: $text-secondary;
+  border: 1px solid $border-color;
+
+  &:hover:not(:disabled) {
+    background: $do-red-light;
+    color: $do-red;
+    border-color: $do-red;
+  }
+}
+
+// ── Animations ────────────────────────────────────────────────────────────────
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
